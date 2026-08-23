@@ -14,25 +14,37 @@ def display_dashboard(
     finding: DriftFinding,
     recommendations: list[str],
 ) -> None:
-    """Render scan metrics, drift status, and remediation guidance."""
-    console = Console()
-    console.print("\n[bold cyan]AeroDrift[/bold cyan] [dim]Agentic Cloud Topology & Remediation Graph[/dim]")
+    """Render the completed scan as a readable Rich terminal dashboard.
 
-    metrics = Table(title="Topology Scan", box=box.ROUNDED)
-    metrics.add_column("Metric", style="bold")
-    metrics.add_column("Value", justify="right")
-    metrics.add_row("Total nodes", str(topology.number_of_nodes()))
-    metrics.add_row("Total edges", str(topology.number_of_edges()))
-    metrics.add_row("Internet -> Database path", "YES" if finding.internet_to_database_path else "NO")
-    metrics.add_row("Drift status", f"[red]{finding.status}[/red]" if finding.internet_to_database_path else f"[green]{finding.status}[/green]")
-    console.print(metrics)
+    Args:
+        topology: Directed graph whose node and edge counts summarize the scan.
+        finding: Security reachability result produced by the drift detector.
+        recommendations: Remediation messages generated for the finding.
 
-    status_style = "red" if finding.internet_to_database_path else "green"
-    console.print(Panel(f"[{status_style}]{finding.message}[/{status_style}]", title="Security Check"))
+    The function only presents scan results. Graph analysis and recommendation
+    generation happen in their own modules, keeping this layer focused on CLI
+    formatting.
+    """
+    cli_console = Console()
+    cli_console.print("\n[bold cyan]AeroDrift[/bold cyan] [dim]Agentic Cloud Topology & Remediation Graph[/dim]")
 
-    recommendations_table = Table(title="Remediation Recommendations", box=box.SIMPLE)
-    recommendations_table.add_column("#", style="bold yellow", width=4)
-    recommendations_table.add_column("Recommendation")
-    for number, recommendation in enumerate(recommendations, start=1):
-        recommendations_table.add_row(str(number), recommendation)
-    console.print(recommendations_table)
+    topology_metrics = Table(title="Topology Scan", box=box.ROUNDED)
+    topology_metrics.add_column("Metric", style="bold")
+    topology_metrics.add_column("Value", justify="right")
+    topology_metrics.add_row("Total nodes", str(topology.number_of_nodes()))
+    topology_metrics.add_row("Total edges", str(topology.number_of_edges()))
+    topology_metrics.add_row("Internet -> Database path", "YES" if finding.internet_to_database_path else "NO")
+    topology_metrics.add_row("Drift status", f"[red]{finding.status}[/red]" if finding.internet_to_database_path else f"[green]{finding.status}[/green]")
+    cli_console.print(topology_metrics)
+
+    # Red draws attention to an exposed path; green indicates that no path was found.
+    status_color = "red" if finding.internet_to_database_path else "green"
+    status_panel = Panel(f"[{status_color}]{finding.message}[/{status_color}]", title="Security Check")
+    cli_console.print(status_panel)
+
+    remediation_table = Table(title="Remediation Recommendations", box=box.SIMPLE)
+    remediation_table.add_column("#", style="bold yellow", width=4)
+    remediation_table.add_column("Recommendation")
+    for recommendation_number, recommendation_text in enumerate(recommendations, start=1):
+        remediation_table.add_row(str(recommendation_number), recommendation_text)
+    cli_console.print(remediation_table)
