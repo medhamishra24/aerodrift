@@ -271,6 +271,64 @@ If PowerShell blocks activation scripts, run this command as your normal user:
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
+## Frequently Asked Questions
+
+### 1. What is AeroDrift?
+
+AeroDrift is a local Python prototype that models cloud resources as a directed graph, detects an unsafe Internet-to-Database path, and generates remediation recommendations.
+
+### 2. Does AeroDrift connect to AWS?
+
+No. The current version uses mock AWS data only and does not require an AWS account, credentials, or network access.
+
+### 3. What security problem does the demo detect?
+
+It detects whether a directed path exists from the public `internet` node to the `database` node. That path represents a potentially unsafe public route to the data layer.
+
+### 4. Which resources are included in the mock topology?
+
+The topology contains an Internet entry point, a public security group, a web server, an application server, and a database.
+
+### 5. Why does the demo always report drift?
+
+The mock relationship data intentionally includes the route `Internet -> Public Security Group -> Web Server -> Application Server -> Database`, making the security finding reproducible for demonstrations.
+
+### 6. What does NetworkX do in the project?
+
+NetworkX stores the cloud resources as nodes and their communication relationships as directed edges. AeroDrift uses NetworkX reachability to check the Internet-to-Database path.
+
+### 7. What recommendations does AeroDrift generate?
+
+For the demonstrated drift, it recommends closing unrestricted security-group access, restricting public access to trusted sources, and removing the unnecessary Internet-to-Database route.
+
+### 8. Where are scan results saved?
+
+Scan results are stored in `data/scan_results.db`, a SQLite database created automatically when the application runs for the first time.
+
+### 9. Does every scan overwrite the previous result?
+
+No. Each successful run appends a new record containing the UTC scan time, status, and combined recommendations.
+
+### 10. How do I run AeroDrift?
+
+Activate the virtual environment, install the dependencies, and run `python main.py` from the project root. See [Installation and Setup](#installation-and-setup) for the full process.
+
+### 11. Can I change the simulated cloud resources?
+
+Yes. Update the resource definitions and relationship tuples in `aws_data.py`. Keep resource IDs consistent with relationship endpoints so graph validation succeeds.
+
+### 12. Can AeroDrift automatically fix cloud security issues?
+
+No. The current version only detects drift and provides recommendations. It does not modify cloud resources, and its mock-data-only design makes it safe to run locally.
+
+### 13. Can I use AeroDrift without Rich or NetworkX?
+
+No. Rich provides the terminal dashboard and NetworkX provides graph construction and reachability analysis. Install both through `requirements.txt`.
+
+### 14. Is the project suitable for learning or an internship demonstration?
+
+Yes. Its modular pipeline shows resource modeling, graph analysis, security detection, recommendation generation, CLI presentation, and database persistence in a small runnable project.
+
 ## Sample Output
 
 ```text
