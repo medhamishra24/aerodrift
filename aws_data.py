@@ -1,7 +1,7 @@
 """Mock AWS resource collection for AeroDrift."""
 
-from dataclasses import dataclass
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 
 Relationship = tuple[str, str, str]
@@ -9,7 +9,14 @@ Relationship = tuple[str, str, str]
 
 @dataclass(frozen=True)
 class CloudResource:
-    """A small, provider-neutral representation of a cloud resource."""
+    """Provider-neutral representation of one simulated cloud resource.
+
+    Attributes:
+        resource_id: Stable identifier used as the graph node key.
+        name: Human-readable resource name for dashboard output.
+        resource_type: Category of resource, such as ``Compute`` or ``Database``.
+        description: Short explanation of the resource's role in the topology.
+    """
 
     resource_id: str
     name: str
@@ -18,32 +25,71 @@ class CloudResource:
 
 
 def load_mock_resources() -> list[CloudResource]:
-    """Return the resources used by the local demonstration scan."""
+    """Load and validate the resources used by the demonstration scan.
+
+    Returns:
+        Five deterministic mock resources representing the Internet, security
+        group, application tiers, and database.
+
+    Raises:
+        ValueError: If the built-in resource definitions fail validation.
+    """
+    # Keeping the sample inventory deterministic makes demonstrations repeatable.
     resources = [
-        CloudResource("internet", "Internet", "External", "Public internet entry point"),
-        CloudResource("sg-public", "Public Security Group", "Security Group", "Allows inbound traffic from 0.0.0.0/0"),
-        CloudResource("web-server", "Web Server", "Compute", "Public-facing web workload"),
-        CloudResource("app-server", "Application Server", "Compute", "Internal application workload"),
-        CloudResource("database", "Database", "Database", "Private customer data store"),
+        CloudResource(
+            "internet", "Internet", "External", "Public internet entry point"
+        ),
+        CloudResource(
+            "sg-public",
+            "Public Security Group",
+            "Security Group",
+            "Allows inbound traffic from 0.0.0.0/0",
+        ),
+        CloudResource(
+            "web-server", "Web Server", "Compute", "Public-facing web workload"
+        ),
+        CloudResource(
+            "app-server",
+            "Application Server",
+            "Compute",
+            "Internal application workload",
+        ),
+        CloudResource(
+            "database", "Database", "Database", "Private customer data store"
+        ),
     ]
+    # Validate at the collection boundary before another module builds graph nodes.
     validate_resources(resources)
     return resources
 
 
 def load_mock_relationships() -> list[Relationship]:
-    """Return directed relationships, including the intentionally unsafe route."""
+    """Load and validate directed relationships for the mock topology.
+
+    Returns:
+        Four deterministic relationships, including the intentionally unsafe
+        route from the Internet to the Database.
+
+    Raises:
+        ValueError: If a relationship points to an unknown resource or has a
+            blank label.
+    """
     relationships = [
         ("internet", "sg-public", "internet ingress"),
         ("sg-public", "web-server", "allows traffic to"),
         ("web-server", "app-server", "application request"),
         ("app-server", "database", "database connection"),
     ]
+    # Endpoint validation prevents the graph from containing dangling edges.
     validate_relationships(relationships, load_mock_resources())
     return relationships
 
 
 def validate_resources(resources: Sequence[CloudResource]) -> None:
     """Validate resource identity and descriptive fields before graph creation.
+
+    Args:
+        resources: Resource records to validate before graph creation.
 
     Raises:
         ValueError: If the collection is empty, contains duplicate IDs, or has
@@ -72,6 +118,10 @@ def validate_relationships(
     resources: Sequence[CloudResource],
 ) -> None:
     """Validate relationship endpoints and labels against known resources.
+
+    Args:
+        relationships: Directed resource relationships to validate.
+        resources: Resource records that define valid endpoint IDs.
 
     Raises:
         ValueError: If a relationship has an unknown endpoint or blank label.
