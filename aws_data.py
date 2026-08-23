@@ -35,7 +35,6 @@ def load_mock_resources() -> list[CloudResource]:
     Raises:
         ValueError: If the built-in resource definitions fail validation.
     """
-    # Keeping the sample inventory deterministic makes demonstrations repeatable.
     resources: list[CloudResource] = [
         CloudResource(
             "internet", "Internet", "External", "Public internet entry point"
@@ -59,7 +58,6 @@ def load_mock_resources() -> list[CloudResource]:
             "database", "Database", "Database", "Private customer data store"
         ),
     ]
-    # Validate at the collection boundary before another module builds graph nodes.
     validate_resources(resources)
     return resources
 
@@ -81,7 +79,6 @@ def load_mock_relationships() -> list[Relationship]:
         ("web-server", "app-server", "application request"),
         ("app-server", "database", "database connection"),
     ]
-    # Endpoint validation prevents the graph from containing dangling edges.
     validate_relationships(relationships, load_mock_resources())
     return relationships
 
@@ -108,7 +105,6 @@ def validate_resources(resources: Sequence[CloudResource]) -> None:
     )
 
     for resource in resources:
-        # Stable unique IDs are required because NetworkX uses them as node keys.
         if resource.resource_id in resource_ids:
             raise ValueError(f"Duplicate resource ID: {resource.resource_id}")
         resource_ids.add(resource.resource_id)
@@ -137,7 +133,6 @@ def validate_relationships(
     }
 
     for source_id, target_id, relationship_label in relationships:
-        # Reject dangling edges early so topology analysis cannot silently omit data.
         if source_id not in known_resource_ids:
             raise ValueError(f"Unknown relationship source: {source_id}")
         if target_id not in known_resource_ids:
