@@ -1,14 +1,17 @@
 # AeroDrift
 
-AeroDrift is a Python prototype for cloud topology and remediation analysis. It simulates AWS resources locally, builds a directed NetworkX graph, checks for an Internet-to-Database route, displays the result with Rich, and stores each scan in SQLite.
+A Python prototype for cloud topology and remediation analysis. AeroDrift uses
+mock AWS resources, a directed NetworkX graph, a Rich terminal dashboard, and
+SQLite scan history.
 
 ## Project Overview
 
-The prototype models this cloud environment:
+The prototype models this environment:
 
 `Internet -> Public Security Group -> Web Server -> Application Server -> Database`
 
-The route is intentionally unsafe so the drift check has a repeatable result. No AWS account or credentials are required.
+The route is intentionally unsafe so the drift check has a repeatable result.
+No AWS account or credentials are required.
 
 ## Features
 
@@ -38,23 +41,14 @@ AWS/mock resources -> Graph -> Drift Detection -> Remediation -> Dashboard -> SQ
 - **`dashboard.py`** displays graph metrics, drift status, and recommendations with Rich.
 - **`database.py`** stores the scan timestamp, status, and recommendations in SQLite.
 
-`main.py` owns orchestration; the other modules return data to the next stage.
-The design keeps the mock data, analysis, presentation, and storage layers
-separate.
+The modules keep mock data, analysis, presentation, and storage separate.
 
 ## Workflow
 
-When `python main.py` runs, data moves through the application in this order:
-
-1. `main.py` calls `load_mock_resources()` to load five simulated cloud resources.
-2. `build_topology()` adds those resources as graph nodes and adds their directed relationships as edges.
-3. `detect_security_drift()` uses NetworkX reachability to check the Internet-to-Database path.
-4. `generate_recommendations()` selects remediation guidance based on the finding.
-5. `display_dashboard()` presents node count, edge count, drift status, and recommendations.
-6. `save_scan_result()` writes the UTC scan time, status, and combined recommendations to SQLite.
-
-The workflow is deterministic: every run starts with the same mock topology and
-should produce the same drift finding.
+When `python main.py` runs, it loads the mock resources, builds the directed
+graph, checks Internet-to-Database reachability, generates recommendations,
+renders the dashboard, and saves the result in SQLite. Every run starts with
+the same topology and should produce the same finding.
 
 ## Technologies Used
 
@@ -113,11 +107,13 @@ AeroDrift/
 ├── dashboard.py            # Rich CLI dashboard rendering
 ├── requirements.txt        # Runtime Python dependencies
 ├── README.md               # Project documentation
+├── CONTRIBUTING.md          # Contribution guidelines
+├── LICENSE                 # MIT license
 ├── .gitignore              # Generated files and local settings to ignore
 ├── data/                   # Created when the first scan runs
 │   └── scan_results.db     # Local SQLite scan history
 └── screenshots/            # Optional presentation screenshots
-  └── .gitkeep            # Keeps the directory in Git
+    └── .gitkeep            # Keeps the directory in Git
 ```
 
 `data/scan_results.db` is created automatically when the first scan runs. Python cache directories and the virtual environment are intentionally excluded from version control.
@@ -132,7 +128,7 @@ From the project root, after activating the virtual environment:
 python main.py
 ```
 
-The command loads mock resources, builds the topology, checks reachability, displays the dashboard, and saves the result. Each run appends one scan result to `data/scan_results.db`.
+Each run appends one scan result to `data/scan_results.db`.
 
 ### Confirm the latest saved result
 
@@ -245,61 +241,25 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ## Frequently Asked Questions
 
-### 1. What is AeroDrift?
+### Does AeroDrift connect to AWS?
 
-AeroDrift is a local Python prototype that models cloud resources as a directed graph, detects an unsafe Internet-to-Database path, and generates remediation recommendations.
+No. It uses mock data only and does not require an AWS account, credentials, or network access.
 
-### 2. Does AeroDrift connect to AWS?
+### Why does the demo report drift?
 
-No. The current version uses mock AWS data only and does not require an AWS account, credentials, or network access.
+The mock topology intentionally includes a directed route from `internet` to `database`, so the finding is repeatable.
 
-### 3. What security problem does the demo detect?
+### Can I change the simulated resources?
 
-It detects whether a directed path exists from the public `internet` node to the `database` node. That path represents a potentially unsafe public route to the data layer.
+Yes. Update the resources and relationships in `aws_data.py`. Keep resource IDs consistent with relationship endpoints so validation succeeds.
 
-### 4. Which resources are included in the mock topology?
+### Does AeroDrift fix the detected issue?
 
-The topology contains an Internet entry point, a public security group, a web server, an application server, and a database.
+No. It reports the route and suggests actions, but it does not modify cloud resources.
 
-### 5. Why does the demo always report drift?
+### Where is scan history stored?
 
-The mock relationship data intentionally includes the route `Internet -> Public Security Group -> Web Server -> Application Server -> Database`, making the security finding reproducible for demonstrations.
-
-### 6. What does NetworkX do in the project?
-
-NetworkX stores the cloud resources as nodes and their communication relationships as directed edges. AeroDrift uses NetworkX reachability to check the Internet-to-Database path.
-
-### 7. What recommendations does AeroDrift generate?
-
-For the demonstrated drift, it recommends closing unrestricted security-group access, restricting public access to trusted sources, and removing the unnecessary Internet-to-Database route.
-
-### 8. Where are scan results saved?
-
-Scan results are stored in `data/scan_results.db`, a SQLite database created automatically when the application runs for the first time.
-
-### 9. Does every scan overwrite the previous result?
-
-No. Each successful run appends a new record containing the UTC scan time, status, and combined recommendations.
-
-### 10. How do I run AeroDrift?
-
-Activate the virtual environment, install the dependencies, and run `python main.py` from the project root. See [Installation and Setup](#installation-and-setup) for the full process.
-
-### 11. Can I change the simulated cloud resources?
-
-Yes. Update the resource definitions and relationship tuples in `aws_data.py`. Keep resource IDs consistent with relationship endpoints so graph validation succeeds.
-
-### 12. Can AeroDrift automatically fix cloud security issues?
-
-No. The current version only detects drift and provides recommendations. It does not modify cloud resources, and its mock-data-only design makes it safe to run locally.
-
-### 13. Can I use AeroDrift without Rich or NetworkX?
-
-No. Rich provides the terminal dashboard and NetworkX provides graph construction and reachability analysis. Install both through `requirements.txt`.
-
-### 14. Is the project suitable for learning or an internship demonstration?
-
-Yes. Its modular pipeline shows resource modeling, graph analysis, security detection, recommendation generation, CLI presentation, and database persistence in a small runnable project.
+Each successful scan is appended to `data/scan_results.db` with its UTC timestamp, status, and recommendations.
 
 ## Project Screenshots
 
