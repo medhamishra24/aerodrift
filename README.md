@@ -22,30 +22,21 @@ The route is intentionally unsafe so the drift check has a repeatable result. No
 
 ## Project Architecture
 
-AeroDrift uses a small pipeline in which each module has one responsibility.
+AeroDrift uses a small pipeline in which each module has one responsibility:
 
 ```text
-main.py
-  |
-  +--> aws_data.py --> graph_engine.py --> drift_detector.py --> remediation.py
-  |                                                                    |
-  +---------------------------------------------------+----------------+
-                                                      |
-                                      +---------------+---------------+
-                                      v                               v
-                              dashboard.py                    database.py
-                              Rich terminal UI                 SQLite history
+AWS/mock resources -> Graph -> Drift Detection -> Remediation -> Dashboard -> SQLite
+  aws_data.py       graph_engine.py   drift_detector.py   remediation.py   dashboard.py   database.py
 ```
 
-### Module Responsibilities
+`main.py` coordinates the complete flow.
 
-- **`main.py`** starts the application and coordinates the complete scan from data loading through persistence.
-- **`aws_data.py`** defines the `CloudResource` model, supplies validated mock resources, and provides directed relationships.
-- **`graph_engine.py`** converts resources and relationships into a NetworkX `DiGraph` with node attributes and edge labels.
-- **`drift_detector.py`** checks whether a directed path exists from the public `internet` node to the `database` node.
-- **`remediation.py`** converts the drift finding into ordered, practical security recommendations.
-- **`dashboard.py`** renders node counts, edge counts, drift status, and recommendations with Rich.
-- **`database.py`** creates the local SQLite table and stores each scan's UTC timestamp, status, and recommendations.
+- **`aws_data.py`** defines `CloudResource` and supplies validated mock resources and relationships.
+- **`graph_engine.py`** builds a NetworkX directed graph from those resources and relationships.
+- **`drift_detector.py`** checks whether a directed path exists from `internet` to `database`.
+- **`remediation.py`** creates recommendations from the drift finding.
+- **`dashboard.py`** displays graph metrics, drift status, and recommendations with Rich.
+- **`database.py`** stores the scan timestamp, status, and recommendations in SQLite.
 
 `main.py` owns orchestration; the other modules return data to the next stage.
 The design keeps the mock data, analysis, presentation, and storage layers
@@ -317,6 +308,12 @@ Yes. Its modular pipeline shows resource modeling, graph analysis, security dete
 [View the AeroDrift dashboard screenshot](screenshots/dashboard.output.png.jpeg)
 
 This screenshot shows the AeroDrift security scan, its drift detection result, the remediation recommendations, and the message confirming that the result was saved to SQLite.
+
+### GitHub Repository
+
+[View the AeroDrift GitHub repository screenshot](screenshots/gitHub_repository.png.jpeg)
+
+This screenshot demonstrates the project's GitHub repository and version-control history.
 
 ## Sample Output
 
