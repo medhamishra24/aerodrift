@@ -3,9 +3,10 @@
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Final
 
-DATABASE_PATH = Path(__file__).parent / "data" / "scan_results.db"
-CREATE_TABLE_SQL = """
+DATABASE_PATH: Final[Path] = Path(__file__).parent / "data" / "scan_results.db"
+CREATE_TABLE_SQL: Final[str] = """
     CREATE TABLE IF NOT EXISTS scan_results (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         scan_time TEXT NOT NULL,
@@ -13,7 +14,9 @@ CREATE_TABLE_SQL = """
         recommendation TEXT NOT NULL
     )
 """
-INSERT_RESULT_SQL = "INSERT INTO scan_results (scan_time, status, recommendation) VALUES (?, ?, ?)"
+INSERT_RESULT_SQL: Final[str] = (
+    "INSERT INTO scan_results (scan_time, status, recommendation) VALUES (?, ?, ?)"
+)
 
 
 def initialize_database() -> None:

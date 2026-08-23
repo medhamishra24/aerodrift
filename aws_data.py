@@ -2,9 +2,10 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TypeAlias
 
 
-Relationship = tuple[str, str, str]
+Relationship: TypeAlias = tuple[str, str, str]
 
 
 @dataclass(frozen=True)
@@ -35,7 +36,7 @@ def load_mock_resources() -> list[CloudResource]:
         ValueError: If the built-in resource definitions fail validation.
     """
     # Keeping the sample inventory deterministic makes demonstrations repeatable.
-    resources = [
+    resources: list[CloudResource] = [
         CloudResource(
             "internet", "Internet", "External", "Public internet entry point"
         ),
@@ -74,7 +75,7 @@ def load_mock_relationships() -> list[Relationship]:
         ValueError: If a relationship points to an unknown resource or has a
             blank label.
     """
-    relationships = [
+    relationships: list[Relationship] = [
         ("internet", "sg-public", "internet ingress"),
         ("sg-public", "web-server", "allows traffic to"),
         ("web-server", "app-server", "application request"),
@@ -99,7 +100,12 @@ def validate_resources(resources: Sequence[CloudResource]) -> None:
         raise ValueError("At least one cloud resource is required")
 
     resource_ids: set[str] = set()
-    required_fields = ("resource_id", "name", "resource_type", "description")
+    required_fields: tuple[str, ...] = (
+        "resource_id",
+        "name",
+        "resource_type",
+        "description",
+    )
 
     for resource in resources:
         # Stable unique IDs are required because NetworkX uses them as node keys.
@@ -126,7 +132,9 @@ def validate_relationships(
     Raises:
         ValueError: If a relationship has an unknown endpoint or blank label.
     """
-    known_resource_ids = {resource.resource_id for resource in resources}
+    known_resource_ids: set[str] = {
+        resource.resource_id for resource in resources
+    }
 
     for source_id, target_id, relationship_label in relationships:
         # Reject dangling edges early so topology analysis cannot silently omit data.
