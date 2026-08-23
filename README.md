@@ -173,6 +173,104 @@ Expected result format:
 
 The timestamp will reflect the time of your scan.
 
+## Troubleshooting
+
+### Python Not Found
+
+If the terminal reports that `python` is not recognized, Python may not be installed or may not be available on your `PATH`.
+
+- Install Python 3.10 or newer from [python.org](https://www.python.org/downloads/).
+- On Windows, enable **Add Python to PATH** during installation.
+- Close and reopen the terminal, then verify the installation:
+
+```bash
+python --version
+```
+
+On some macOS and Linux systems, use `python3` instead of `python` in the commands in this README.
+
+### Module Import Errors
+
+If you see `ModuleNotFoundError` for `networkx` or `rich`, activate the project virtual environment and install the requirements again:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+If the error continues, confirm that `python` and `pip` point to the same environment:
+
+```bash
+python -m pip --version
+python -c "import networkx, rich; print('Dependencies imported successfully')"
+```
+
+Run `main.py` from the project root so Python can find the local AeroDrift modules.
+
+### SQLite Database Issues
+
+If the application cannot create or write `data/scan_results.db`, check that:
+
+- You are running `python main.py` from the project directory.
+- The project directory is writable.
+- Another process is not holding the database file open.
+- The `data` path is not a file with the same name as the required directory.
+
+AeroDrift creates the `data` directory and database table automatically. For a local demonstration, stop the application and remove `data/scan_results.db` to start with a fresh scan history; the next run recreates it.
+
+### GitHub Push Issues
+
+If Git reports that `origin` is missing, add the remote and try again:
+
+```bash
+git remote add origin https://github.com/<your-username>/AeroDrift.git
+git push -u origin main
+```
+
+If the remote URL is incorrect, update it with:
+
+```bash
+git remote set-url origin https://github.com/<your-username>/AeroDrift.git
+```
+
+Confirm the remote and branch before pushing:
+
+```bash
+git remote -v
+git branch --show-current
+```
+
+For authentication failures, use GitHub's supported authentication method, such as GitHub CLI or SSH. Do not place passwords, access tokens, or other secrets in the repository or command history.
+
+### Virtual Environment Issues
+
+If activation fails or dependencies appear to be missing, recreate the local environment.
+
+Windows PowerShell:
+
+```powershell
+deactivate
+Remove-Item -Recurse -Force .venv
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+macOS/Linux:
+
+```bash
+deactivate
+rm -rf .venv
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+If PowerShell blocks activation scripts, run this command as your normal user:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
 ## Sample Output
 
 ```text
