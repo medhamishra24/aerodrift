@@ -4,7 +4,7 @@ Thank you for contributing to AeroDrift. Contributions that improve the prototyp
 
 ## Project Overview
 
-AeroDrift is a beginner-friendly Python prototype for **Agentic Cloud Topology & Remediation Graph** analysis. It uses mock AWS resources to build a directed NetworkX graph, detects whether the Internet can reach the Database, generates remediation recommendations, displays results with Rich, and stores scan history in SQLite.
+AeroDrift is a Python prototype for **Agentic Cloud Topology & Remediation Graph** analysis. It uses mock AWS resources to build a directed NetworkX graph, detects whether the Internet can reach the Database, generates remediation recommendations, displays results with Rich, and stores scan history in SQLite.
 
 The project intentionally runs without AWS credentials or a cloud account. Keep contributions compatible with this local, deterministic workflow unless a change explicitly introduces an optional integration.
 
@@ -18,12 +18,7 @@ The project intentionally runs without AWS credentials or a cloud account. Keep 
 
 ### Installation
 
-Clone the repository and enter its directory:
-
-```bash
-git clone https://github.com/<your-username>/AeroDrift.git
-cd AeroDrift
-```
+Open a terminal in the project directory.
 
 Create and activate a virtual environment.
 
