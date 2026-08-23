@@ -1,5 +1,7 @@
 # AeroDrift
 
+**Agentic Cloud Topology & Remediation Graph**
+
 AeroDrift is a beginner-friendly prototype for **Agentic Cloud Topology & Remediation Graph** analysis. It simulates AWS resources locally, builds a directed NetworkX topology, detects a risky Internet-to-Database route, recommends remediation, displays a Rich terminal dashboard, and stores each scan in SQLite.
 
 ## Project Overview
@@ -20,34 +22,72 @@ The route is intentionally unsafe for demonstration purposes. AeroDrift reports 
 - SQLite scan history
 - Modular, readable Python files suitable for an internship demonstration
 
-## Architecture
+## Project Architecture
 
-AeroDrift uses a small pipeline with clear responsibilities:
+AeroDrift is organized as a small, function-based pipeline. Each module owns one part of the scan, which keeps the code easy to explain, test, and extend.
 
 ```text
-aws_data.py
-	|
-	v
-graph_engine.py  -->  drift_detector.py  -->  remediation.py
-	|                         |                       |
-	+-------------------------+-----------------------+
-							  v
-					dashboard.py + database.py
+						 +------------------+
+						 |    aws_data.py   |
+						 | Mock resources   |
+						 +--------+---------+
+								  |
+								  v
+						 +------------------+
+						 |  graph_engine.py |
+						 | NetworkX graph   |
+						 +--------+---------+
+								  |
+								  v
+						 +------------------+
+						 | drift_detector.py|
+						 | Reachability     |
+						 +--------+---------+
+								  |
+								  v
+						 +------------------+
+						 |  remediation.py  |
+						 | Recommendations  |
+						 +--------+---------+
+								  |
+					+-------------+-------------+
+					v                           v
+		   +------------------+       +------------------+
+		   |   dashboard.py    |       |    database.py   |
+		   | Rich presentation |       | SQLite history   |
+		   +------------------+       +------------------+
+
+						 main.py coordinates the scan
 ```
 
-1. `aws_data.py` supplies mock resources and directed relationships.
-2. `graph_engine.py` converts that data into a NetworkX `DiGraph`.
-3. `drift_detector.py` checks whether a path exists from `internet` to `database`.
-4. `remediation.py` creates recommendations from the finding.
-5. `dashboard.py` presents the scan in the terminal.
-6. `database.py` stores the scan status, timestamp, and recommendations in SQLite.
-7. `main.py` coordinates the complete workflow.
+### Module Responsibilities
 
-The intentionally exposed route is:
+- **`main.py`** is the application entry point and coordinates the complete scan.
+- **`aws_data.py`** provides validated mock resources and directed relationships.
+- **`graph_engine.py`** converts resources into a NetworkX `DiGraph` with node attributes and edge labels.
+- **`drift_detector.py`** checks whether a directed path exists from `internet` to `database`.
+- **`remediation.py`** turns a drift finding into practical security recommendations.
+- **`dashboard.py`** renders topology metrics, status, and recommendations with Rich.
+- **`database.py`** creates the local SQLite schema and stores scan time, status, and recommendations.
+
+The intentionally exposed demonstration route is:
 
 `Internet -> Public Security Group -> Web Server -> Application Server -> Database`
 
-This makes the security finding reproducible during a demonstration while keeping the project independent of AWS credentials.
+This makes the security finding reproducible while keeping the prototype independent of AWS accounts, credentials, and network access.
+
+## Workflow
+
+When `python main.py` runs, data moves through the application in this order:
+
+1. `main.py` calls `load_mock_resources()` to load five simulated cloud resources.
+2. `build_topology()` adds those resources as graph nodes and adds their directed relationships as edges.
+3. `detect_security_drift()` uses NetworkX reachability to check the Internet-to-Database path.
+4. `generate_recommendations()` selects remediation guidance based on the finding.
+5. `display_dashboard()` presents node count, edge count, drift status, and recommendations.
+6. `save_scan_result()` writes the UTC scan time, status, and combined recommendations to SQLite.
+
+The workflow is deterministic by design: every demonstration run starts with the same mock topology and should produce the same drift finding.
 
 ## Technologies Used
 
@@ -56,9 +96,18 @@ This makes the security finding reproducible during a demonstration while keepin
 - Rich
 - SQLite (Python standard library)
 
-## Installation
+## Installation and Setup
 
-From the project directory, create and activate a virtual environment:
+Requirements: Python 3.10 or newer. No AWS account, credentials, or cloud configuration is needed.
+
+Clone the repository and enter the project directory:
+
+```bash
+git clone https://github.com/<your-username>/AeroDrift.git
+cd AeroDrift
+```
+
+Create a virtual environment:
 
 ```bash
 python -m venv .venv
@@ -82,27 +131,40 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
+Verify the installation:
+
+```bash
+python --version
+python -c "import networkx, rich; print('AeroDrift dependencies are ready')"
+```
+
 ## Project Structure
 
 ```text
 AeroDrift/
-├── main.py                 # End-to-end scan workflow
-├── aws_data.py             # Mock AWS resources and relationships
-├── graph_engine.py         # NetworkX topology construction
-├── drift_detector.py       # Security reachability check
-├── remediation.py          # Recommendation generation
-├── database.py              # SQLite persistence
-├── dashboard.py             # Rich terminal dashboard
-├── requirements.txt
-├── README.md
-├── data/                    # Created automatically on first scan
-│   └── scan_results.db
-└── screenshots/             # Place presentation screenshots here
+├── main.py                 # Application entry point and scan coordinator
+├── aws_data.py             # Mock resources, relationships, and validation
+├── graph_engine.py         # NetworkX directed topology construction
+├── drift_detector.py       # Internet-to-Database reachability check
+├── remediation.py          # Security remediation recommendation logic
+├── database.py             # SQLite schema setup and scan persistence
+├── dashboard.py             # Rich CLI dashboard rendering
+├── requirements.txt        # Runtime Python dependencies
+├── README.md               # Project documentation and demonstration guide
+├── .gitignore              # Ignores environments, caches, and local secrets
+├── data/                   # Runtime data directory
+│   └── scan_results.db     # Generated SQLite scan history
+└── screenshots/            # Optional screenshots for project presentation
+	└── .gitkeep            # Keeps the empty directory in Git
 ```
 
-## Usage
+`data/scan_results.db` is created automatically when the first scan runs. Python cache directories and the virtual environment are intentionally excluded from version control.
 
-Run the scan from the project root after activating the virtual environment:
+## Usage Examples
+
+### Run a topology scan
+
+From the project root, after activating the virtual environment:
 
 ```bash
 python main.py
@@ -110,11 +172,21 @@ python main.py
 
 The command loads mock resources, builds the topology, checks reachability, displays the dashboard, and saves the result. Each run appends one scan result to `data/scan_results.db`.
 
-To confirm that a result was saved, use Python's built-in SQLite support:
+### Confirm the latest saved result
+
+Use Python's built-in SQLite support to inspect the latest scan:
 
 ```bash
 python -c "import sqlite3; connection = sqlite3.connect('data/scan_results.db'); print(connection.execute('SELECT scan_time, status FROM scan_results ORDER BY id DESC LIMIT 1').fetchone()); connection.close()"
 ```
+
+Expected result format:
+
+```text
+('2026-08-23T12:00:00+00:00', 'DRIFT DETECTED')
+```
+
+The timestamp will reflect the time of your scan.
 
 ## Sample Output
 
@@ -139,14 +211,15 @@ Remediation Recommendations
 Scan result saved to data/scan_results.db
 ```
 
-## Future Enhancements
+## Future Improvements
 
-- Add alternate safe and drifted topology scenarios
-- Export topology diagrams as PNG or GraphML
-- Add a scan history command and filters
-- Add unit tests and CI checks
-- Integrate read-only AWS inventory collection behind an optional adapter
-- Add a recommendation confidence score and remediation approval workflow
+- Add selectable safe and drifted topology scenarios for demonstrations.
+- Export topology diagrams as PNG or GraphML.
+- Add a scan-history command with date and status filters.
+- Add unit tests, integration tests, and continuous integration checks.
+- Integrate read-only AWS inventory collection behind an optional adapter.
+- Add recommendation confidence scores and a remediation approval workflow.
+- Add structured JSON output for dashboards and external integrations.
 
 ## Upload To GitHub
 
@@ -168,6 +241,3 @@ git push -u origin main
 ```
 
 Do not commit cloud credentials, local environment files, or secrets. This prototype intentionally uses mock data only.
-
-update 1: project documentation improved
-update 2: added project notes.
