@@ -27,17 +27,16 @@ def display_dashboard(
         finding: Security reachability result produced by the drift detector.
         recommendations: Remediation messages generated for the finding.
 
-    The function does not perform analysis or modify the supplied values. Graph
-    analysis and recommendation generation happen in their own modules, keeping
-    this layer focused on CLI formatting.
+    The function presents results; analysis and recommendation generation happen
+    in their own modules.
     """
     cli_console = Console()
+    drift_detected: bool = finding.internet_to_database_path
     cli_console.print(
         "\n[bold cyan]AeroDrift[/bold cyan] "
         "[dim]Agentic Cloud Topology & Remediation Graph[/dim]"
     )
 
-    # Summarize the graph and security finding in a compact table for scanning.
     topology_metrics = Table(title="Topology Scan", box=box.ROUNDED)
     topology_metrics.add_column("Metric", style="bold")
     topology_metrics.add_column("Value", justify="right")
@@ -45,27 +44,25 @@ def display_dashboard(
     topology_metrics.add_row("Total edges", str(topology.number_of_edges()))
     topology_metrics.add_row(
         "Internet -> Database path",
-        "YES" if finding.internet_to_database_path else "NO",
+        "YES" if drift_detected else "NO",
     )
     topology_metrics.add_row(
         "Drift status",
         (
             f"[red]{finding.status}[/red]"
-            if finding.internet_to_database_path
+            if drift_detected
             else f"[green]{finding.status}[/green]"
         ),
     )
     cli_console.print(topology_metrics)
 
-    # Red draws attention to an exposed path; green indicates that no path was found.
-    status_color = "red" if finding.internet_to_database_path else "green"
+    status_color = "red" if drift_detected else "green"
     status_panel = Panel(
         f"[{status_color}]{finding.message}[/{status_color}]",
         title="Security Check",
     )
     cli_console.print(status_panel)
 
-    # Number each recommendation so the operator can discuss actions clearly.
     remediation_table = Table(title="Remediation Recommendations", box=box.SIMPLE)
     remediation_table.add_column("#", style="bold yellow", width=4)
     remediation_table.add_column("Recommendation")
