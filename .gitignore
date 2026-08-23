@@ -1,4 +1,31 @@
+# Python cache and generated test artifacts
 __pycache__/
 *.py[cod]
+*.pyo
+.pytest_cache/
+
+# Virtual environments and local environment files
 .venv/
+venv/
+env/
+ENV/
 .env
+.env.*
+
+# Local SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# VS Code workspace settings
+.vscode/
+
+# Temporary and local runtime files
+*.tmp
+*.temp
+*.log
+
+# Operating-system generated files
+.DS_Store
+Thumbs.db
+desktop.ini
