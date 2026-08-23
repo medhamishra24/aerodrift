@@ -24,51 +24,36 @@ The route is intentionally unsafe for demonstration purposes. AeroDrift reports 
 
 ## Project Architecture
 
-AeroDrift is organized as a small, function-based pipeline. Each module owns one part of the scan, which keeps the code easy to explain, test, and extend.
+AeroDrift is organized as a small, function-based pipeline. Each module owns a
+single responsibility, which keeps the project easy to explain, test, and
+extend.
 
 ```text
-						 +------------------+
-						 |    aws_data.py   |
-						 | Mock resources   |
-						 +--------+---------+
-								  |
-								  v
-						 +------------------+
-						 |  graph_engine.py |
-						 | NetworkX graph   |
-						 +--------+---------+
-								  |
-								  v
-						 +------------------+
-						 | drift_detector.py|
-						 | Reachability     |
-						 +--------+---------+
-								  |
-								  v
-						 +------------------+
-						 |  remediation.py  |
-						 | Recommendations  |
-						 +--------+---------+
-								  |
-					+-------------+-------------+
-					v                           v
-		   +------------------+       +------------------+
-		   |   dashboard.py    |       |    database.py   |
-		   | Rich presentation |       | SQLite history   |
-		   +------------------+       +------------------+
-
-						 main.py coordinates the scan
+main.py
+  |
+  +--> aws_data.py --> graph_engine.py --> drift_detector.py --> remediation.py
+  |                                                                    |
+  +---------------------------------------------------+----------------+
+                                                      |
+                                      +---------------+---------------+
+                                      v                               v
+                              dashboard.py                    database.py
+                              Rich terminal UI                 SQLite history
 ```
 
 ### Module Responsibilities
 
-- **`main.py`** is the application entry point and coordinates the complete scan.
-- **`aws_data.py`** provides validated mock resources and directed relationships.
-- **`graph_engine.py`** converts resources into a NetworkX `DiGraph` with node attributes and edge labels.
-- **`drift_detector.py`** checks whether a directed path exists from `internet` to `database`.
-- **`remediation.py`** turns a drift finding into practical security recommendations.
-- **`dashboard.py`** renders topology metrics, status, and recommendations with Rich.
-- **`database.py`** creates the local SQLite schema and stores scan time, status, and recommendations.
+- **`main.py`** starts the application and coordinates the complete scan from data loading through persistence.
+- **`aws_data.py`** defines the `CloudResource` model, supplies validated mock resources, and provides directed relationships.
+- **`graph_engine.py`** converts resources and relationships into a NetworkX `DiGraph` with node attributes and edge labels.
+- **`drift_detector.py`** checks whether a directed path exists from the public `internet` node to the `database` node.
+- **`remediation.py`** converts the drift finding into ordered, practical security recommendations.
+- **`dashboard.py`** renders node counts, edge counts, drift status, and recommendations with Rich.
+- **`database.py`** creates the local SQLite table and stores each scan's UTC timestamp, status, and recommendations.
+
+`main.py` owns orchestration, while the other modules perform focused work and
+return data to the next stage. This separation makes it possible to replace
+the mock data source, dashboard, or storage layer independently in the future.
 
 The intentionally exposed demonstration route is:
 
