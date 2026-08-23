@@ -27,14 +27,15 @@ def initialize_database() -> None:
             create or access the scan table.
     """
     try:
-        # Creating the directory here makes a fresh checkout runnable immediately.
         DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(DATABASE_PATH) as connection:
             connection.execute(CREATE_TABLE_SQL)
     except OSError as error:
-        raise RuntimeError(f"Unable to create database directory: {DATABASE_PATH.parent}") from error
+        message = f"Unable to create database directory: {DATABASE_PATH.parent}"
+        raise RuntimeError(message) from error
     except sqlite3.Error as error:
-        raise RuntimeError(f"Unable to initialize SQLite database: {DATABASE_PATH}") from error
+        message = f"Unable to initialize SQLite database: {DATABASE_PATH}"
+        raise RuntimeError(message) from error
 
 
 def save_scan_result(status: str, recommendations: list[str]) -> None:
@@ -49,12 +50,15 @@ def save_scan_result(status: str, recommendations: list[str]) -> None:
             cannot be written.
     """
     initialize_database()
-    scan_time = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    recommendation_text = " ".join(recommendations)
+    scan_time: str = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    recommendation_text: str = " ".join(recommendations)
 
     try:
         with sqlite3.connect(DATABASE_PATH) as connection:
-            # Parameterized SQL keeps generated recommendation text separate from the query.
-            connection.execute(INSERT_RESULT_SQL, (scan_time, status, recommendation_text))
+            connection.execute(
+                INSERT_RESULT_SQL,
+                (scan_time, status, recommendation_text),
+            )
     except sqlite3.Error as error:
-        raise RuntimeError(f"Unable to save scan result to SQLite database: {DATABASE_PATH}") from error
+        message = f"Unable to save scan result to SQLite database: {DATABASE_PATH}"
+        raise RuntimeError(message) from error
