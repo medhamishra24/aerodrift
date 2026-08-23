@@ -1,16 +1,14 @@
 # AeroDrift
 
-**Agentic Cloud Topology & Remediation Graph**
-
-AeroDrift is a beginner-friendly prototype for **Agentic Cloud Topology & Remediation Graph** analysis. It simulates AWS resources locally, builds a directed NetworkX topology, detects a risky Internet-to-Database route, recommends remediation, displays a Rich terminal dashboard, and stores each scan in SQLite.
+AeroDrift is a Python prototype for cloud topology and remediation analysis. It simulates AWS resources locally, builds a directed NetworkX graph, checks for an Internet-to-Database route, displays the result with Rich, and stores each scan in SQLite.
 
 ## Project Overview
 
-The prototype models a small cloud environment:
+The prototype models this cloud environment:
 
 `Internet -> Public Security Group -> Web Server -> Application Server -> Database`
 
-The route is intentionally unsafe for demonstration purposes. AeroDrift reports the security drift and provides practical next steps without requiring an AWS account or credentials.
+The route is intentionally unsafe so the drift check has a repeatable result. No AWS account or credentials are required.
 
 ## Features
 
@@ -20,13 +18,11 @@ The route is intentionally unsafe for demonstration purposes. AeroDrift reports 
 - Colored Rich CLI dashboard
 - Remediation recommendations
 - SQLite scan history
-- Modular, readable Python files suitable for an internship demonstration
+- Small modules suitable for learning and demonstration
 
 ## Project Architecture
 
-AeroDrift is organized as a small, function-based pipeline. Each module owns a
-single responsibility, which keeps the project easy to explain, test, and
-extend.
+AeroDrift uses a small pipeline in which each module has one responsibility.
 
 ```text
 main.py
@@ -51,15 +47,9 @@ main.py
 - **`dashboard.py`** renders node counts, edge counts, drift status, and recommendations with Rich.
 - **`database.py`** creates the local SQLite table and stores each scan's UTC timestamp, status, and recommendations.
 
-`main.py` owns orchestration, while the other modules perform focused work and
-return data to the next stage. This separation makes it possible to replace
-the mock data source, dashboard, or storage layer independently in the future.
-
-The intentionally exposed demonstration route is:
-
-`Internet -> Public Security Group -> Web Server -> Application Server -> Database`
-
-This makes the security finding reproducible while keeping the prototype independent of AWS accounts, credentials, and network access.
+`main.py` owns orchestration; the other modules return data to the next stage.
+The design keeps the mock data, analysis, presentation, and storage layers
+separate.
 
 ## Workflow
 
@@ -72,7 +62,8 @@ When `python main.py` runs, data moves through the application in this order:
 5. `display_dashboard()` presents node count, edge count, drift status, and recommendations.
 6. `save_scan_result()` writes the UTC scan time, status, and combined recommendations to SQLite.
 
-The workflow is deterministic by design: every demonstration run starts with the same mock topology and should produce the same drift finding.
+The workflow is deterministic: every run starts with the same mock topology and
+should produce the same drift finding.
 
 ## Technologies Used
 
@@ -85,12 +76,7 @@ The workflow is deterministic by design: every demonstration run starts with the
 
 Requirements: Python 3.10 or newer. No AWS account, credentials, or cloud configuration is needed.
 
-Clone the repository and enter the project directory:
-
-```bash
-git clone https://github.com/<your-username>/AeroDrift.git
-cd AeroDrift
-```
+Open a terminal in the project directory.
 
 Create a virtual environment:
 
@@ -133,14 +119,14 @@ AeroDrift/
 ├── drift_detector.py       # Internet-to-Database reachability check
 ├── remediation.py          # Security remediation recommendation logic
 ├── database.py             # SQLite schema setup and scan persistence
-├── dashboard.py             # Rich CLI dashboard rendering
+├── dashboard.py            # Rich CLI dashboard rendering
 ├── requirements.txt        # Runtime Python dependencies
-├── README.md               # Project documentation and demonstration guide
-├── .gitignore              # Ignores environments, caches, and local secrets
-├── data/                   # Runtime data directory
-│   └── scan_results.db     # Generated SQLite scan history
-└── screenshots/            # Optional screenshots for project presentation
-	└── .gitkeep            # Keeps the empty directory in Git
+├── README.md               # Project documentation
+├── .gitignore              # Generated files and local settings to ignore
+├── data/                   # Created when the first scan runs
+│   └── scan_results.db     # Local SQLite scan history
+└── screenshots/            # Optional presentation screenshots
+  └── .gitkeep            # Keeps the directory in Git
 ```
 
 `data/scan_results.db` is created automatically when the first scan runs. Python cache directories and the virtual environment are intentionally excluded from version control.
@@ -222,15 +208,10 @@ AeroDrift creates the `data` directory and database table automatically. For a l
 If Git reports that `origin` is missing, add the remote and try again:
 
 ```bash
-git remote add origin https://github.com/<your-username>/AeroDrift.git
 git push -u origin main
 ```
 
-If the remote URL is incorrect, update it with:
-
-```bash
-git remote set-url origin https://github.com/<your-username>/AeroDrift.git
-```
+If the remote URL is incorrect, update it in your Git client before pushing.
 
 Confirm the remote and branch before pushing:
 
@@ -329,6 +310,14 @@ No. Rich provides the terminal dashboard and NetworkX provides graph constructio
 
 Yes. Its modular pipeline shows resource modeling, graph analysis, security detection, recommendation generation, CLI presentation, and database persistence in a small runnable project.
 
+## Project Screenshots
+
+### Dashboard Output
+
+[View the AeroDrift dashboard screenshot](screenshots/dashboard.output.png.jpeg)
+
+This screenshot shows the AeroDrift security scan, its drift detection result, the remediation recommendations, and the message confirming that the result was saved to SQLite.
+
 ## Sample Output
 
 ```text
@@ -362,10 +351,9 @@ Scan result saved to data/scan_results.db
 - Add recommendation confidence scores and a remediation approval workflow.
 - Add structured JSON output for dashboards and external integrations.
 
-## Upload To GitHub
+## Upload to GitHub
 
-1. Create a new empty repository on GitHub named `AeroDrift`.
-2. From this project directory, initialize Git and create the first commit:
+Create an empty repository on GitHub, then run these commands from the project directory:
 
 ```bash
 git init
@@ -373,11 +361,9 @@ git add .
 git commit -m "Build AeroDrift cloud topology prototype"
 ```
 
-3. Connect the GitHub repository and push:
+After adding the repository's remote URL in your local Git client, push the branch:
 
 ```bash
-git branch -M main
-git remote add origin https://github.com/<your-username>/AeroDrift.git
 git push -u origin main
 ```
 
