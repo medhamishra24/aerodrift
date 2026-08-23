@@ -20,6 +20,35 @@ The route is intentionally unsafe for demonstration purposes. AeroDrift reports 
 - SQLite scan history
 - Modular, readable Python files suitable for an internship demonstration
 
+## Architecture
+
+AeroDrift uses a small pipeline with clear responsibilities:
+
+```text
+aws_data.py
+	|
+	v
+graph_engine.py  -->  drift_detector.py  -->  remediation.py
+	|                         |                       |
+	+-------------------------+-----------------------+
+							  v
+					dashboard.py + database.py
+```
+
+1. `aws_data.py` supplies mock resources and directed relationships.
+2. `graph_engine.py` converts that data into a NetworkX `DiGraph`.
+3. `drift_detector.py` checks whether a path exists from `internet` to `database`.
+4. `remediation.py` creates recommendations from the finding.
+5. `dashboard.py` presents the scan in the terminal.
+6. `database.py` stores the scan status, timestamp, and recommendations in SQLite.
+7. `main.py` coordinates the complete workflow.
+
+The intentionally exposed route is:
+
+`Internet -> Public Security Group -> Web Server -> Application Server -> Database`
+
+This makes the security finding reproducible during a demonstration while keeping the project independent of AWS credentials.
+
 ## Technologies Used
 
 - Python 3.10+
@@ -71,13 +100,21 @@ AeroDrift/
 └── screenshots/             # Place presentation screenshots here
 ```
 
-## How To Run
+## Usage
+
+Run the scan from the project root after activating the virtual environment:
 
 ```bash
 python main.py
 ```
 
-Each run appends one scan result to `data/scan_results.db`.
+The command loads mock resources, builds the topology, checks reachability, displays the dashboard, and saves the result. Each run appends one scan result to `data/scan_results.db`.
+
+To confirm that a result was saved, use Python's built-in SQLite support:
+
+```bash
+python -c "import sqlite3; connection = sqlite3.connect('data/scan_results.db'); print(connection.execute('SELECT scan_time, status FROM scan_results ORDER BY id DESC LIMIT 1').fetchone()); connection.close()"
+```
 
 ## Sample Output
 
