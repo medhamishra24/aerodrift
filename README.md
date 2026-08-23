@@ -131,3 +131,5 @@ git push -u origin main
 ```
 
 Do not commit cloud credentials, local environment files, or secrets. This prototype intentionally uses mock data only.
+
+update 1: project documentation improved
