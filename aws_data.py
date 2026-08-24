@@ -110,7 +110,7 @@ def validate_resources(resources: Sequence[CloudResource]) -> None:
         resource_ids.add(resource.resource_id)
 
         for field_name in required_fields:
-            field_value = getattr(resource, field_name)
+            field_value: object = getattr(resource, field_name)
             if not isinstance(field_value, str) or not field_value.strip():
                 raise ValueError(f"Resource {field_name} must be a non-empty string")
 
