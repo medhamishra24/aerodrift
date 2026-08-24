@@ -46,7 +46,9 @@ def detect_security_drift(topology: nx.DiGraph) -> DriftFinding:
             resource nodes.
 
     Returns:
-        A :class:`DriftFinding` describing the reachability result.
+        A :class:`DriftFinding` describing the reachability result. If no path
+        exists, including when an endpoint node is missing, the finding has
+        ``NO DRIFT`` status.
     """
     # NetworkX follows edge direction, so this tests whether traffic can flow
     # from the public entry point to the protected database resource.
