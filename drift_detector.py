@@ -27,8 +27,14 @@ def has_internet_to_database_path(topology: nx.DiGraph) -> bool:
         topology: Directed NetworkX graph containing the mock resource nodes.
 
     Returns:
-        ``True`` when traffic can flow from the Internet node to the database.
+        ``True`` when traffic can flow from the Internet node to the database,
+        otherwise ``False``. Missing endpoint nodes are treated as no path.
     """
+    if not topology.has_node(INTERNET_NODE_ID) or not topology.has_node(
+        DATABASE_NODE_ID
+    ):
+        return False
+
     return nx.has_path(topology, INTERNET_NODE_ID, DATABASE_NODE_ID)
 
 
