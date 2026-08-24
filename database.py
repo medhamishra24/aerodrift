@@ -1,6 +1,7 @@
 """SQLite persistence for AeroDrift scan results."""
 
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Final
@@ -28,8 +29,9 @@ def initialize_database() -> None:
     """
     try:
         DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(DATABASE_PATH) as connection:
-            connection.execute(CREATE_TABLE_SQL)
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            with connection:
+                connection.execute(CREATE_TABLE_SQL)
     except OSError as error:
         message = f"Unable to create database directory: {DATABASE_PATH.parent}"
         raise RuntimeError(message) from error
@@ -54,11 +56,12 @@ def save_scan_result(status: str, recommendations: list[str]) -> None:
     recommendation_text: str = " ".join(recommendations)
 
     try:
-        with sqlite3.connect(DATABASE_PATH) as connection:
-            connection.execute(
-                INSERT_RESULT_SQL,
-                (scan_time, status, recommendation_text),
-            )
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            with connection:
+                connection.execute(
+                    INSERT_RESULT_SQL,
+                    (scan_time, status, recommendation_text),
+                )
     except sqlite3.Error as error:
         message = f"Unable to save scan result to SQLite database: {DATABASE_PATH}"
         raise RuntimeError(message) from error
