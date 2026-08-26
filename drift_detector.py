@@ -18,6 +18,7 @@ class DriftFinding:
     internet_to_database_path: bool
     status: DriftStatus
     message: str
+    path: tuple[str, ...] = ()
 
 
 def has_internet_to_database_path(topology: nx.DiGraph) -> bool:
@@ -52,13 +53,21 @@ def detect_security_drift(topology: nx.DiGraph) -> DriftFinding:
     """
     # NetworkX follows edge direction, so this tests whether traffic can flow
     # from the public entry point to the protected database resource.
-    internet_to_database_path_exists = has_internet_to_database_path(topology)
+    detected_path: tuple[str, ...] = ()
+    if has_internet_to_database_path(topology):
+        detected_path = tuple(
+            nx.shortest_path(topology, INTERNET_NODE_ID, DATABASE_NODE_ID)
+        )
 
-    if internet_to_database_path_exists:
+    if detected_path:
         return DriftFinding(
             internet_to_database_path=True,
             status="DRIFT DETECTED",
-            message="WARNING: Security Drift Detected - Internet can reach Database",
+            message=(
+                "WARNING: Security Drift Detected - Internet can reach Database. "
+                f"Path: {' -> '.join(detected_path)}"
+            ),
+            path=detected_path,
         )
 
     return DriftFinding(
