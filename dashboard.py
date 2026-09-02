@@ -126,7 +126,7 @@ def display_dashboard(
         )
     else:
         status_panel = Panel(
-            Text("No unsafe Internet-to-Database path detected.", style="bold green"),
+            Text("NO SECURITY DRIFT DETECTED", style="bold green"),
             title="Security Check: No Drift",
             border_style="green",
         )
