@@ -8,7 +8,7 @@ from aws_data import load_mock_resources
 from dashboard import display_dashboard
 from database import save_scan_result
 from drift_detector import detect_security_drift
-from graph_engine import build_topology
+from graph_engine import apply_mock_security_group_drift, build_topology
 from remediation import generate_recommendations
 
 
@@ -21,6 +21,20 @@ def run_scan() -> None:
 
     console.print("[bold cyan]Building cloud topology graph...[/bold cyan]")
     cloud_topology = build_topology(mock_resources)
+
+    console.print("[bold cyan]Testing mock security-group drift...[/bold cyan]")
+    cloud_topology.remove_edge("sg-public", "web-server")
+    restricted_finding = detect_security_drift(cloud_topology)
+    console.print(
+        f"Restricted topology: {restricted_finding.status}"
+    )
+    apply_mock_security_group_drift(cloud_topology)
+    security_group_rule = cloud_topology.edges["sg-public", "web-server"][
+        "security_group_rule"
+    ]
+    console.print(
+        f"Mock security-group rule changed to: {security_group_rule}"
+    )
 
     console.print("[bold cyan]Checking for security drift...[/bold cyan]")
     detection_started_at = time.perf_counter()
