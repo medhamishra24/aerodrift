@@ -118,6 +118,7 @@ def display_dashboard(
                 Text("SECURITY DRIFT DETECTED", style="bold white on red"),
                 Text(finding.message, style="bold red"),
                 Text("Affected Internet-to-Database path:", style="bold"),
+                Text(f"Affected resources: {len(finding.path)}", style="bold"),
                 path_text,
             ),
             title="Security Check",
