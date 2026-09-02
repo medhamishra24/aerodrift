@@ -4,7 +4,11 @@ from collections.abc import Sequence
 
 import networkx as nx
 
-from aws_data import CloudResource, load_mock_relationships
+from aws_data import (
+    CloudResource,
+    load_mock_relationships,
+    load_mock_security_group_drift,
+)
 
 
 def build_topology(resources: Sequence[CloudResource]) -> nx.DiGraph:
@@ -21,6 +25,32 @@ def build_topology(resources: Sequence[CloudResource]) -> nx.DiGraph:
     _add_resource_nodes(topology, resources)
     _add_resource_edges(topology)
     return topology
+
+
+def apply_mock_security_group_drift(topology: nx.DiGraph) -> None:
+    """Apply an opt-in public security-group rule change to ``topology``.
+
+    The scenario updates the existing security-group relationship, or adds it
+    when testing against a restricted topology. It uses only local mock data.
+
+    Args:
+        topology: Existing graph whose security-group rule should be changed.
+
+    Raises:
+        ValueError: If the mock security-group or web-server nodes are absent.
+    """
+    source_id, target_id, relationship = load_mock_security_group_drift()
+    if not topology.has_node(source_id) or not topology.has_node(target_id):
+        raise ValueError(
+            "Mock security-group drift requires sg-public and web-server"
+        )
+
+    topology.add_edge(
+        source_id,
+        target_id,
+        relationship=relationship,
+        security_group_rule="0.0.0.0/0",
+    )
 
 
 def _add_resource_nodes(
