@@ -109,9 +109,11 @@ def display_dashboard(
         cli_console.print(topology_tree)
 
     if drift_detected:
-        path_text = Text(" -> ").join(
-            Text(_resource_label(topology, resource_id))
-            for resource_id in finding.path
+        path_text = Text("\n").join(
+            Text(
+                f"{resource_number}. {_resource_label(topology, resource_id)}"
+            )
+            for resource_number, resource_id in enumerate(finding.path, start=1)
         )
         status_panel = Panel(
             Group(
@@ -119,6 +121,7 @@ def display_dashboard(
                 Text(finding.message, style="bold red"),
                 Text("Affected Internet-to-Database path:", style="bold"),
                 Text(f"Affected resources: {len(finding.path)}", style="bold"),
+                Text("Ordered path:", style="bold"),
                 path_text,
             ),
             title="Security Check",
