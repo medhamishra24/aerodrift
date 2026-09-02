@@ -51,6 +51,15 @@ def run_scan() -> None:
         console.print(
             "[bold yellow]Audit target warning: detection took 5 seconds or longer.[/bold yellow]"
         )
+    if drift_finding.internet_to_database_path:
+        detected_path = " -> ".join(
+            str(cloud_topology.nodes[resource_id].get("name", resource_id))
+            for resource_id in drift_finding.path
+        )
+        console.print(f"[bold red]Detected path: {detected_path}[/bold red]")
+        console.print(
+            "[bold red]Audit result: unsafe Internet-to-Database path detected.[/bold red]"
+        )
     remediation_recommendations = generate_recommendations(drift_finding)
 
     display_dashboard(cloud_topology, drift_finding, remediation_recommendations)
