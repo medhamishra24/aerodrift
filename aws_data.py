@@ -83,6 +83,19 @@ def load_mock_relationships() -> list[Relationship]:
     return relationships
 
 
+def load_mock_security_group_drift() -> Relationship:
+    """Return the mock rule change that opens public application access.
+
+    Returns:
+        The security-group relationship that allows public inbound traffic.
+    """
+    return (
+        "sg-public",
+        "web-server",
+        "allows public traffic (0.0.0.0/0)",
+    )
+
+
 def validate_resources(resources: Sequence[CloudResource]) -> None:
     """Validate resource identity and descriptive fields before graph creation.
 
