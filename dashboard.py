@@ -8,9 +8,10 @@ tables and a color-coded security status panel.
 
 import networkx as nx
 from rich import box
-from rich.console import Console
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 from rich.tree import Tree
 
 from drift_detector import DriftFinding
@@ -107,11 +108,27 @@ def display_dashboard(
     else:
         cli_console.print(topology_tree)
 
-    status_color = "red" if drift_detected else "green"
-    status_panel = Panel(
-        f"[{status_color}]{finding.message}[/{status_color}]",
-        title="Security Check",
-    )
+    if drift_detected:
+        path_text = Text(" -> ").join(
+            Text(_resource_label(topology, resource_id))
+            for resource_id in finding.path
+        )
+        status_panel = Panel(
+            Group(
+                Text("SECURITY DRIFT DETECTED", style="bold white on red"),
+                Text(finding.message, style="bold red"),
+                Text("Affected Internet-to-Database path:", style="bold"),
+                path_text,
+            ),
+            title="Security Check",
+            border_style="red",
+        )
+    else:
+        status_panel = Panel(
+            Text("No unsafe Internet-to-Database path detected.", style="bold green"),
+            title="Security Check: No Drift",
+            border_style="green",
+        )
     cli_console.print(status_panel)
 
     remediation_table = Table(title="Remediation Recommendations", box=box.SIMPLE)
