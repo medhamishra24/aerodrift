@@ -25,19 +25,37 @@ def _resource_label(topology: nx.DiGraph, resource_id: object) -> str:
     return f"{resource_type}: {resource_name} ({resource_id})"
 
 
-def _build_topology_tree(topology: nx.DiGraph) -> Tree | None:
+def _resource_text(
+    topology: nx.DiGraph,
+    resource_id: object,
+    affected_resource_ids: set[object],
+) -> Text:
+    """Return a styled resource label for dashboard output."""
+    resource_style = (
+        "bold yellow" if resource_id in affected_resource_ids else None
+    )
+    return Text(_resource_label(topology, resource_id), style=resource_style)
+
+
+def _build_topology_tree(
+    topology: nx.DiGraph,
+    affected_resource_ids: set[object] | None = None,
+) -> Tree | None:
     """Build a Rich tree from the existing directed topology graph."""
     if not topology:
         return None
 
     tree = Tree("[bold cyan]Cloud topology[/bold cyan]")
+    affected_resource_ids = affected_resource_ids or set()
     visited: set[object] = set()
 
     def add_branch(parent: Tree, resource_id: object, path: set[object]) -> None:
         if resource_id in path:
             return
 
-        branch = parent.add(_resource_label(topology, resource_id))
+        branch = parent.add(
+            _resource_text(topology, resource_id, affected_resource_ids)
+        )
         visited.add(resource_id)
         next_path = path | {resource_id}
         for child_id in topology.successors(resource_id):
@@ -102,7 +120,8 @@ def display_dashboard(
     )
     cli_console.print(topology_metrics)
 
-    topology_tree = _build_topology_tree(topology)
+    affected_resource_ids = set(finding.path) if drift_detected else set()
+    topology_tree = _build_topology_tree(topology, affected_resource_ids)
     if topology_tree is None:
         topology_content = Text("Cloud topology is empty.", style="yellow")
     else:
@@ -117,8 +136,8 @@ def display_dashboard(
 
     if drift_detected:
         path_text = Text("\n").join(
-            Text(
-                f"{resource_number}. {_resource_label(topology, resource_id)}"
+            Text(f"{resource_number}. ").append(
+                _resource_text(topology, resource_id, affected_resource_ids)
             )
             for resource_number, resource_id in enumerate(finding.path, start=1)
         )
