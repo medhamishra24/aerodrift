@@ -1,5 +1,7 @@
 """Run the AeroDrift scan using local mock data."""
 
+import time
+
 from rich.console import Console
 
 from aws_data import load_mock_resources
@@ -21,7 +23,12 @@ def run_scan() -> None:
     cloud_topology = build_topology(mock_resources)
 
     console.print("[bold cyan]Checking for security drift...[/bold cyan]")
+    detection_started_at = time.perf_counter()
     drift_finding = detect_security_drift(cloud_topology)
+    detection_elapsed_ms = (time.perf_counter() - detection_started_at) * 1000
+    console.print(
+        f"[bold cyan]Detection time: {detection_elapsed_ms:.3f} ms[/bold cyan]"
+    )
     remediation_recommendations = generate_recommendations(drift_finding)
 
     display_dashboard(cloud_topology, drift_finding, remediation_recommendations)
