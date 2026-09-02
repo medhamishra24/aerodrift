@@ -29,6 +29,14 @@ def run_scan() -> None:
     console.print(
         f"[bold cyan]Detection time: {detection_elapsed_ms:.3f} ms[/bold cyan]"
     )
+    if detection_elapsed_ms < 5000:
+        console.print(
+            "[bold green]Audit target passed: detection completed under 5 seconds.[/bold green]"
+        )
+    else:
+        console.print(
+            "[bold yellow]Audit target warning: detection took 5 seconds or longer.[/bold yellow]"
+        )
     remediation_recommendations = generate_recommendations(drift_finding)
 
     display_dashboard(cloud_topology, drift_finding, remediation_recommendations)
