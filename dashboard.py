@@ -11,8 +11,53 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.tree import Tree
 
 from drift_detector import DriftFinding
+
+
+def _resource_label(topology: nx.DiGraph, resource_id: object) -> str:
+    """Return a readable label for one topology node."""
+    resource_data = topology.nodes[resource_id]
+    resource_type = resource_data.get("resource_type", "Resource")
+    resource_name = resource_data.get("name", resource_id)
+    return f"{resource_type}: {resource_name} ({resource_id})"
+
+
+def _build_topology_tree(topology: nx.DiGraph) -> Tree | None:
+    """Build a Rich tree from the existing directed topology graph."""
+    if not topology:
+        return None
+
+    tree = Tree("[bold cyan]Cloud topology[/bold cyan]")
+    visited: set[object] = set()
+
+    def add_branch(parent: Tree, resource_id: object, path: set[object]) -> None:
+        if resource_id in path:
+            return
+
+        branch = parent.add(_resource_label(topology, resource_id))
+        visited.add(resource_id)
+        next_path = path | {resource_id}
+        for child_id in topology.successors(resource_id):
+            relationship = topology.edges[resource_id, child_id].get("relationship")
+            child_label = relationship or "connected to"
+            child_branch = branch.add(f"[dim]{child_label}[/dim]")
+            add_branch(child_branch, child_id, next_path)
+
+    root_ids = [
+        resource_id
+        for resource_id in topology
+        if topology.in_degree(resource_id) == 0
+    ]
+    for root_id in root_ids:
+        add_branch(tree, root_id, set())
+
+    for resource_id in topology:
+        if resource_id not in visited:
+            add_branch(tree, resource_id, set())
+
+    return tree
 
 
 def display_dashboard(
@@ -55,6 +100,12 @@ def display_dashboard(
         ),
     )
     cli_console.print(topology_metrics)
+
+    topology_tree = _build_topology_tree(topology)
+    if topology_tree is None:
+        cli_console.print("[yellow]Cloud topology is empty.[/yellow]")
+    else:
+        cli_console.print(topology_tree)
 
     status_color = "red" if drift_detected else "green"
     status_panel = Panel(
