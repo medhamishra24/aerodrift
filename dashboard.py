@@ -43,7 +43,7 @@ def _build_topology_tree(topology: nx.DiGraph) -> Tree | None:
         for child_id in topology.successors(resource_id):
             relationship = topology.edges[resource_id, child_id].get("relationship")
             child_label = relationship or "connected to"
-            child_branch = branch.add(f"[dim]{child_label}[/dim]")
+            child_branch = branch.add(f"[dim]-- {child_label} -->[/dim]")
             add_branch(child_branch, child_id, next_path)
 
     root_ids = [
