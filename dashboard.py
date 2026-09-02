@@ -104,9 +104,16 @@ def display_dashboard(
 
     topology_tree = _build_topology_tree(topology)
     if topology_tree is None:
-        cli_console.print("[yellow]Cloud topology is empty.[/yellow]")
+        topology_content = Text("Cloud topology is empty.", style="yellow")
     else:
-        cli_console.print(topology_tree)
+        topology_content = topology_tree
+    cli_console.print(
+        Panel(
+            topology_content,
+            title="Topology Tree",
+            border_style="cyan",
+        )
+    )
 
     if drift_detected:
         path_text = Text("\n").join(
@@ -140,4 +147,10 @@ def display_dashboard(
     remediation_table.add_column("Recommendation")
     for recommendation_number, recommendation_text in enumerate(recommendations, start=1):
         remediation_table.add_row(str(recommendation_number), recommendation_text)
-    cli_console.print(remediation_table)
+    cli_console.print(
+        Panel(
+            remediation_table,
+            title="Remediation",
+            border_style="yellow",
+        )
+    )
