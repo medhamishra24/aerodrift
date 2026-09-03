@@ -19,6 +19,8 @@ class DriftFinding:
     status: DriftStatus
     message: str
     path: tuple[str, ...] = ()
+    security_group_rule: str | None = None
+    affected_security_group: str | None = None
 
 
 def has_internet_to_database_path(topology: nx.DiGraph) -> bool:
@@ -60,6 +62,15 @@ def detect_security_drift(topology: nx.DiGraph) -> DriftFinding:
         )
 
     if detected_path:
+        security_group_rule: str | None = None
+        affected_security_group: str | None = None
+        for source_id, target_id in zip(detected_path, detected_path[1:]):
+            edge_data = topology.edges[source_id, target_id]
+            if "security_group_rule" in edge_data:
+                security_group_rule = str(edge_data["security_group_rule"])
+                affected_security_group = source_id
+                break
+
         return DriftFinding(
             internet_to_database_path=True,
             status="DRIFT DETECTED",
@@ -68,6 +79,8 @@ def detect_security_drift(topology: nx.DiGraph) -> DriftFinding:
                 f"Path: {' -> '.join(detected_path)}"
             ),
             path=detected_path,
+            security_group_rule=security_group_rule,
+            affected_security_group=affected_security_group,
         )
 
     return DriftFinding(

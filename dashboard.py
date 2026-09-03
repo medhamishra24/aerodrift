@@ -147,6 +147,14 @@ def display_dashboard(
                 Text(finding.message, style="bold red"),
                 Text("Affected Internet-to-Database path:", style="bold"),
                 Text(f"Affected resources: {len(finding.path)}", style="bold"),
+                Text(
+                    f"Public ingress rule: source CIDR {finding.security_group_rule or 'unknown'}",
+                    style="bold",
+                ),
+                Text(
+                    f"Affected security group: {finding.affected_security_group or 'unknown'}",
+                    style="bold",
+                ),
                 Text("Ordered path:", style="bold"),
                 path_text,
             ),
