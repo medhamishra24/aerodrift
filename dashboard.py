@@ -223,6 +223,25 @@ def display_dashboard(
         )
     cli_console.print(status_panel)
 
+    validation_status = (
+        Text(
+            "Internet-to-Database security check: UNSAFE",
+            style="bold white on red",
+        )
+        if drift_detected
+        else Text(
+            "Internet-to-Database security check: SAFE",
+            style="bold green",
+        )
+    )
+    cli_console.print(
+        Panel(
+            validation_status,
+            title="Validation Status",
+            border_style="red" if drift_detected else "green",
+        )
+    )
+
     remediation_table = Table(title="Remediation Recommendations", box=box.SIMPLE)
     remediation_table.add_column("#", style="bold yellow", width=4)
     remediation_table.add_column("Recommendation")
