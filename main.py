@@ -58,7 +58,11 @@ def run_scan() -> None:
         )
         console.print(f"[bold red]Detected path: {detected_path}[/bold red]")
         console.print(
-            "[bold red]Audit result: unsafe Internet-to-Database path detected.[/bold red]"
+            "[bold red]Audit result: UNSAFE - Internet-to-Database path detected.[/bold red]"
+        )
+    else:
+        console.print(
+            "[bold green]Audit result: SAFE - no Internet-to-Database path detected.[/bold green]"
         )
     remediation_recommendations = generate_recommendations(drift_finding)
 

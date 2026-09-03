@@ -144,6 +144,7 @@ def display_dashboard(
         status_panel = Panel(
             Group(
                 Text("SECURITY DRIFT DETECTED", style="bold white on red"),
+                Text("Audit result: UNSAFE", style="bold white on red"),
                 Text(finding.message, style="bold red"),
                 Text("Affected Internet-to-Database path:", style="bold"),
                 Text(f"Affected resources: {len(finding.path)}", style="bold"),
@@ -163,7 +164,10 @@ def display_dashboard(
         )
     else:
         status_panel = Panel(
-            Text("NO SECURITY DRIFT DETECTED", style="bold green"),
+            Group(
+                Text("NO SECURITY DRIFT DETECTED", style="bold green"),
+                Text("Audit result: SAFE", style="bold green"),
+            ),
             title="Security Check: No Drift",
             border_style="green",
         )
