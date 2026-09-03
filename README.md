@@ -23,6 +23,20 @@ No AWS account or credentials are required.
 - SQLite scan history
 - Small modules suitable for learning and demonstration
 
+## Week 2 - Security Drift Detection
+
+Week 2 checks the directed `Internet -> Database` path in the mock topology.
+The audit surfaces the mock public ingress rule `0.0.0.0/0`, which represents
+unrestricted IPv4 source access, along with the affected resources and
+security-group details in the Rich dashboard. The dashboard also reports the
+SAFE or UNSAFE audit result and targets detection within five seconds.
+
+Run the project with:
+
+```bash
+python main.py
+```
+
 ## Project Architecture
 
 AeroDrift uses a small pipeline in which each module has one responsibility:
