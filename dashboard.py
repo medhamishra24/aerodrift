@@ -141,6 +141,17 @@ def display_dashboard(
             )
             for resource_number, resource_id in enumerate(finding.path, start=1)
         )
+        affected_resources_table = Table(
+            title="Affected Resources",
+            box=box.SIMPLE,
+        )
+        affected_resources_table.add_column("#", style="bold yellow", width=4)
+        affected_resources_table.add_column("Resource")
+        for resource_number, resource_id in enumerate(finding.path, start=1):
+            affected_resources_table.add_row(
+                str(resource_number),
+                _resource_label(topology, resource_id),
+            )
         status_panel = Panel(
             Group(
                 Text("SECURITY DRIFT DETECTED", style="bold white on red"),
@@ -156,6 +167,7 @@ def display_dashboard(
                     f"Affected security group: {finding.affected_security_group or 'unknown'}",
                     style="bold",
                 ),
+                affected_resources_table,
                 Text("Ordered path:", style="bold"),
                 path_text,
             ),
