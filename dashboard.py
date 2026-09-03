@@ -174,6 +174,12 @@ def display_dashboard(
                     style="bold",
                 ),
                 Text(
+                    f"Risk explanation: Public CIDR {finding.security_group_rule or 'unknown'} "
+                    "allows unrestricted IPv4 source access into the "
+                    "Internet-to-Database path.",
+                    style="bold red",
+                ),
+                Text(
                     f"Affected security group: {finding.affected_security_group or 'unknown'}",
                     style="bold",
                 ),
