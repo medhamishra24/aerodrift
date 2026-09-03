@@ -40,9 +40,6 @@ def run_scan() -> None:
     detection_started_at = time.perf_counter()
     drift_finding = detect_security_drift(cloud_topology)
     detection_elapsed_ms = (time.perf_counter() - detection_started_at) * 1000
-    console.print(
-        f"[bold cyan]Detection time: {detection_elapsed_ms:.3f} ms[/bold cyan]"
-    )
     if detection_elapsed_ms < 5000:
         console.print(
             "[bold green]Audit target passed: detection completed under 5 seconds.[/bold green]"
@@ -56,13 +53,21 @@ def run_scan() -> None:
             str(cloud_topology.nodes[resource_id].get("name", resource_id))
             for resource_id in drift_finding.path
         )
-        console.print(f"[bold red]Detected path: {detected_path}[/bold red]")
+        console.print("[bold red]Audit status: UNSAFE[/bold red]")
+        console.print(f"[bold red]Detected Internet-to-Database path: {detected_path}[/bold red]")
         console.print(
-            "[bold red]Audit result: UNSAFE - Internet-to-Database path detected.[/bold red]"
+            f"[bold red]Affected resources: {len(drift_finding.path)}[/bold red]"
+        )
+        console.print(
+            f"[bold cyan]Detection time: {detection_elapsed_ms:.3f} ms[/bold cyan]"
         )
     else:
+        console.print("[bold green]Audit status: SAFE[/bold green]")
         console.print(
-            "[bold green]Audit result: SAFE - no Internet-to-Database path detected.[/bold green]"
+            "[bold green]No Internet-to-Database path detected.[/bold green]"
+        )
+        console.print(
+            f"[bold cyan]Detection time: {detection_elapsed_ms:.3f} ms[/bold cyan]"
         )
     remediation_recommendations = generate_recommendations(drift_finding)
 
