@@ -152,6 +152,15 @@ def display_dashboard(
                 str(resource_number),
                 _resource_label(topology, resource_id),
             )
+        security_group_edge_data = next(
+            (
+                topology.edges[source_id, target_id]
+                for source_id, target_id in zip(finding.path, finding.path[1:])
+                if "security_group_rule"
+                in topology.edges[source_id, target_id]
+            ),
+            {},
+        )
         status_panel = Panel(
             Group(
                 Text("SECURITY DRIFT DETECTED", style="bold white on red"),
@@ -167,6 +176,27 @@ def display_dashboard(
                 Text(
                     f"Affected security group: {finding.affected_security_group or 'unknown'}",
                     style="bold",
+                ),
+                *(
+                    [
+                        Text(
+                            f"Protocol: {security_group_edge_data['protocol']}",
+                            style="bold",
+                        )
+                    ]
+                    if security_group_edge_data.get("protocol") is not None
+                    else []
+                ),
+                *(
+                    [
+                        Text(
+                            f"Port/port range: {security_group_edge_data.get('port', security_group_edge_data.get('port_range'))}",
+                            style="bold",
+                        )
+                    ]
+                    if security_group_edge_data.get("port") is not None
+                    or security_group_edge_data.get("port_range") is not None
+                    else []
                 ),
                 affected_resources_table,
                 Text("Ordered path:", style="bold"),
