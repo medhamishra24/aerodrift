@@ -55,8 +55,16 @@ def run_scan() -> None:
         )
         console.print("[bold red]Audit status: UNSAFE[/bold red]")
         console.print(f"[bold red]Detected Internet-to-Database path: {detected_path}[/bold red]")
+        affected_resource_types = list(
+            dict.fromkeys(
+                cloud_topology.nodes[resource_id].get("resource_type", "Resource")
+                for resource_id in drift_finding.path
+            )
+        )
         console.print(
-            f"[bold red]Affected resources: {len(drift_finding.path)}[/bold red]"
+            "[bold red]Affected resource summary: "
+            f"{len(drift_finding.path)} total; types: "
+            f"{', '.join(affected_resource_types)}[/bold red]"
         )
         console.print(
             f"[bold cyan]Detection time: {detection_elapsed_ms:.3f} ms[/bold cyan]"
