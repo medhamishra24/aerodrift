@@ -9,7 +9,12 @@ from dashboard import display_dashboard
 from database import save_scan_result
 from drift_detector import detect_security_drift
 from graph_engine import apply_mock_security_group_drift, build_topology
-from remediation import generate_recommendations
+from remediation import (
+    RemediationInput,
+    generate_recommendations,
+    generate_remediation_code,
+    validate_remediation_code,
+)
 
 
 def run_scan() -> None:
@@ -69,6 +74,25 @@ def run_scan() -> None:
         console.print(
             f"[bold cyan]Detection time: {detection_elapsed_ms:.3f} ms[/bold cyan]"
         )
+        remediation_input = RemediationInput(
+            security_group_id=drift_finding.affected_security_group or "",
+            source_cidr=drift_finding.security_group_rule or "",
+            protocol="tcp",
+            from_port=80,
+            to_port=80,
+            reason="Revoke the unsafe public security-group ingress rule.",
+        )
+        remediation_source = generate_remediation_code(remediation_input)
+        is_remediation_valid, remediation_message = validate_remediation_code(
+            remediation_source
+        )
+        if is_remediation_valid:
+            console.print(
+                "[bold green]Generated remediation code passed AST validation "
+                "and is ready for controlled execution.[/bold green]"
+            )
+        else:
+            console.print(f"[bold red]{remediation_message}[/bold red]")
     else:
         console.print("[bold green]Audit status: SAFE[/bold green]")
         console.print(
