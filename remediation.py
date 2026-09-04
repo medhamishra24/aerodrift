@@ -438,6 +438,7 @@ class RemediationWorkflowResult:
     success: bool
     message: str
     result_summary: str
+    remediation_summary: str
     audit_record: RemediationAuditRecord
     operation: dict[str, Any] | None = None
 
@@ -467,6 +468,10 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
                 "Validation passed: no; execution attempted: no; "
                 "mock remediation succeeded: no; final status: BLOCKED."
             ),
+            remediation_summary=(
+                "Affected resource: unavailable; targeted rule: unavailable; "
+                "final status: BLOCKED."
+            ),
             audit_record=audit_record,
         )
 
@@ -474,9 +479,18 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     security_group_id = ast.literal_eval(
         validated_tree.body[2].value.keywords[0].value
     )
+    permission = ast.literal_eval(
+        validated_tree.body[2].value.keywords[1].value
+    )[0]
     logger.info("Remediation audit: validation result=passed")
     execution_result = execute_remediation_code(source)
     final_status = "SUCCESS" if execution_result.success else "FAILED"
+    remediation_summary = (
+        f"Affected resource: {security_group_id}; targeted rule: "
+        f"{permission['IpProtocol']} ports {permission['FromPort']}-"
+        f"{permission['ToPort']} from {permission['IpRanges'][0]['CidrIp']}; "
+        f"final status: {final_status}."
+    )
     audit_record = RemediationAuditRecord(
         timestamp=timestamp,
         security_group_id=security_group_id,
@@ -497,6 +511,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             f"mock remediation succeeded: {'yes' if execution_result.success else 'no'}; "
             f"final status: {final_status}."
         ),
+        remediation_summary=remediation_summary,
         audit_record=audit_record,
         operation=execution_result.operation,
     )
