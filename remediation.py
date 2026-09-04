@@ -2,10 +2,14 @@
 
 import ast
 import ipaddress
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from drift_detector import DriftFinding
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -429,6 +433,9 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     """Validate source, then execute it only through the local mock sandbox."""
     is_valid, validation_message = validate_remediation_code(source)
     if not is_valid:
+        logger.warning("Remediation audit: validation result=rejected; %s", validation_message)
+        logger.info("Remediation audit: execution result=not attempted")
+        logger.info("Remediation audit: final status=rejected")
         return RemediationWorkflowResult(
             validation_passed=False,
             execution_attempted=False,
@@ -440,7 +447,11 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             ),
         )
 
+    logger.info("Remediation audit: validation result=passed")
     execution_result = execute_remediation_code(source)
+    final_status = "succeeded" if execution_result.success else "failed"
+    logger.info("Remediation audit: execution result=%s", final_status)
+    logger.info("Remediation audit: final status=%s", final_status)
     return RemediationWorkflowResult(
         validation_passed=True,
         execution_attempted=True,
