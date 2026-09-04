@@ -235,12 +235,20 @@ def _validate_remediation_ast(source: str) -> ast.Module:
     return tree
 
 
-def execute_remediation_code(source: str) -> RemediationExecutionResult:
-    """Execute approved remediation code against a local-only mock client."""
+def validate_remediation_code(source: str) -> tuple[bool, str]:
+    """Validate remediation source without executing it."""
     try:
         _validate_remediation_ast(source)
     except (SyntaxError, ValueError) as error:
-        return RemediationExecutionResult(False, f"Rejected remediation code: {error}")
+        return False, f"Rejected remediation code: {error}"
+    return True, "Remediation code passed AST validation."
+
+
+def execute_remediation_code(source: str) -> RemediationExecutionResult:
+    """Execute approved remediation code against a local-only mock client."""
+    is_valid, validation_message = validate_remediation_code(source)
+    if not is_valid:
+        return RemediationExecutionResult(False, validation_message)
 
     local_boto3 = _LocalBoto3()
 
@@ -267,6 +275,38 @@ def execute_remediation_code(source: str) -> RemediationExecutionResult:
         True,
         "Remediation executed against the local mock client.",
         local_boto3.client_instance.operation,
+    )
+
+
+@dataclass(frozen=True)
+class RemediationWorkflowResult:
+    """Validation and local execution outcome for remediation source."""
+
+    validation_passed: bool
+    execution_attempted: bool
+    success: bool
+    message: str
+    operation: dict[str, Any] | None = None
+
+
+def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
+    """Validate source, then execute it only through the local mock sandbox."""
+    is_valid, validation_message = validate_remediation_code(source)
+    if not is_valid:
+        return RemediationWorkflowResult(
+            validation_passed=False,
+            execution_attempted=False,
+            success=False,
+            message=validation_message,
+        )
+
+    execution_result = execute_remediation_code(source)
+    return RemediationWorkflowResult(
+        validation_passed=True,
+        execution_attempted=True,
+        success=execution_result.success,
+        message=execution_result.message,
+        operation=execution_result.operation,
     )
 
 
