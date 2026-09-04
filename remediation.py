@@ -419,6 +419,15 @@ def execute_remediation_code(source: str) -> RemediationExecutionResult:
 
 
 @dataclass(frozen=True)
+class RemediationActionMetadata:
+    """Targeted rule details for one remediation action."""
+
+    protocol: str
+    port_range: tuple[int, int]
+    source_cidr: str
+
+
+@dataclass(frozen=True)
 class RemediationAuditRecord:
     """Structured audit record for one remediation workflow attempt."""
 
@@ -427,6 +436,7 @@ class RemediationAuditRecord:
     validation_status: str
     execution_status: str
     final_result: Literal["SUCCESS", "FAILED", "BLOCKED"]
+    action_metadata: RemediationActionMetadata | None = None
 
 
 @dataclass(frozen=True)
@@ -454,6 +464,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             validation_status="rejected",
             execution_status="not attempted",
             final_result="BLOCKED",
+            action_metadata=None,
         )
         logger.warning("Remediation audit: validation result=rejected; %s", validation_message)
         logger.info("Remediation audit: execution result=not attempted")
@@ -482,6 +493,11 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     permission = ast.literal_eval(
         validated_tree.body[2].value.keywords[1].value
     )[0]
+    action_metadata = RemediationActionMetadata(
+        protocol=permission["IpProtocol"],
+        port_range=(permission["FromPort"], permission["ToPort"]),
+        source_cidr=permission["IpRanges"][0]["CidrIp"],
+    )
     logger.info("Remediation audit: validation result=passed")
     execution_result = execute_remediation_code(source)
     final_status = "SUCCESS" if execution_result.success else "FAILED"
@@ -497,6 +513,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         validation_status="passed",
         execution_status=final_status,
         final_result=final_status,
+        action_metadata=action_metadata,
     )
     logger.info("Remediation audit: execution result=%s", final_status)
     logger.info("Remediation audit: final status=%s", final_status)
