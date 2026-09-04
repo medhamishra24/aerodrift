@@ -458,6 +458,16 @@ class RemediationAuditSummary:
         )
 
 
+def format_remediation_audit_summary(summary: RemediationAuditSummary) -> str:
+    """Format remediation outcome counts as a compact audit report."""
+    return (
+        f"Attempts: {summary.total_attempts} | "
+        f"SUCCESS: {summary.success_count} | "
+        f"FAILED: {summary.failed_count} | "
+        f"BLOCKED: {summary.blocked_count}"
+    )
+
+
 def summarize_remediation_audits(
     audit_records: Iterable[RemediationAuditRecord],
 ) -> RemediationAuditSummary:
