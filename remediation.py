@@ -506,6 +506,16 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     )
     logger.info("Remediation audit: validation result=passed")
     execution_result = execute_remediation_code(source)
+    if execution_result.success:
+        logger.info(
+            "Remediation audit event: action=SUCCESS; resource=%s; "
+            "rule=%s ports %s-%s from %s; controlled mock action succeeded=yes",
+            security_group_id,
+            action_metadata.protocol,
+            action_metadata.port_range[0],
+            action_metadata.port_range[1],
+            action_metadata.source_cidr,
+        )
     final_status = "SUCCESS" if execution_result.success else "FAILED"
     action_taken = (
         f"Revoked the {action_metadata.protocol} ingress rule for "
