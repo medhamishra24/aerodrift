@@ -4,6 +4,7 @@ import ast
 import ipaddress
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 from drift_detector import DriftFinding
@@ -418,6 +419,17 @@ def execute_remediation_code(source: str) -> RemediationExecutionResult:
 
 
 @dataclass(frozen=True)
+class RemediationAuditRecord:
+    """Structured audit record for one remediation workflow attempt."""
+
+    timestamp: str
+    security_group_id: str | None
+    validation_status: str
+    execution_status: str
+    final_result: str
+
+
+@dataclass(frozen=True)
 class RemediationWorkflowResult:
     """Validation and local execution outcome for remediation source."""
 
@@ -426,16 +438,26 @@ class RemediationWorkflowResult:
     success: bool
     message: str
     result_summary: str
+    audit_record: RemediationAuditRecord
     operation: dict[str, Any] | None = None
 
 
 def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     """Validate source, then execute it only through the local mock sandbox."""
+    timestamp = datetime.now(timezone.utc).isoformat()
     is_valid, validation_message = validate_remediation_code(source)
     if not is_valid:
+        audit_record = RemediationAuditRecord(
+            timestamp=timestamp,
+            security_group_id=None,
+            validation_status="rejected",
+            execution_status="not attempted",
+            final_result="rejected",
+        )
         logger.warning("Remediation audit: validation result=rejected; %s", validation_message)
         logger.info("Remediation audit: execution result=not attempted")
         logger.info("Remediation audit: final status=rejected")
+        logger.info("Remediation audit record: %s", audit_record)
         return RemediationWorkflowResult(
             validation_passed=False,
             execution_attempted=False,
@@ -445,13 +467,26 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
                 "Validation passed: no; execution attempted: no; "
                 "mock remediation succeeded: no."
             ),
+            audit_record=audit_record,
         )
 
+    validated_tree = _validate_remediation_ast(source)
+    security_group_id = ast.literal_eval(
+        validated_tree.body[2].value.keywords[0].value
+    )
     logger.info("Remediation audit: validation result=passed")
     execution_result = execute_remediation_code(source)
     final_status = "succeeded" if execution_result.success else "failed"
+    audit_record = RemediationAuditRecord(
+        timestamp=timestamp,
+        security_group_id=security_group_id,
+        validation_status="passed",
+        execution_status=final_status,
+        final_result=final_status,
+    )
     logger.info("Remediation audit: execution result=%s", final_status)
     logger.info("Remediation audit: final status=%s", final_status)
+    logger.info("Remediation audit record: %s", audit_record)
     return RemediationWorkflowResult(
         validation_passed=True,
         execution_attempted=True,
@@ -461,6 +496,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             "Validation passed: yes; execution attempted: yes; "
             f"mock remediation succeeded: {'yes' if execution_result.success else 'no'}."
         ),
+        audit_record=audit_record,
         operation=execution_result.operation,
     )
 
