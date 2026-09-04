@@ -421,6 +421,7 @@ class RemediationWorkflowResult:
     execution_attempted: bool
     success: bool
     message: str
+    result_summary: str
     operation: dict[str, Any] | None = None
 
 
@@ -433,6 +434,10 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             execution_attempted=False,
             success=False,
             message=validation_message,
+            result_summary=(
+                "Validation passed: no; execution attempted: no; "
+                "mock remediation succeeded: no."
+            ),
         )
 
     execution_result = execute_remediation_code(source)
@@ -441,6 +446,10 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         execution_attempted=True,
         success=execution_result.success,
         message=execution_result.message,
+        result_summary=(
+            "Validation passed: yes; execution attempted: yes; "
+            f"mock remediation succeeded: {'yes' if execution_result.success else 'no'}."
+        ),
         operation=execution_result.operation,
     )
 
