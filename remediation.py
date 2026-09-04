@@ -58,7 +58,7 @@ class RemediationInput:
 
 
 def generate_remediation_code(remediation: RemediationInput) -> str:
-    """Return reviewable AST-generated code for revoking a security rule."""
+    """Return validated-input AST source for a mock-safe ingress revocation."""
     revoke_call = ast.Call(
         func=ast.Attribute(
             value=ast.Name(id="ec2", ctx=ast.Load()),
@@ -211,7 +211,11 @@ def _validate_remediation_ast(source: str) -> ast.Module:
     except (ValueError, TypeError, SyntaxError) as error:
         raise ValueError("Remediation arguments must contain literals only") from error
 
-    if not isinstance(group_id, str) or not isinstance(ip_permissions, list):
+    if (
+        not isinstance(group_id, str)
+        or not group_id.strip()
+        or not isinstance(ip_permissions, list)
+    ):
         raise ValueError("Remediation arguments have an invalid shape")
     if len(ip_permissions) != 1 or not isinstance(ip_permissions[0], dict):
         raise ValueError("Exactly one ingress permission is required")
@@ -222,6 +226,22 @@ def _validate_remediation_ast(source: str) -> ast.Module:
         "IpRanges",
     }:
         raise ValueError("Ingress permission fields are not allowed")
+    permission = ip_permissions[0]
+    protocol = permission["IpProtocol"]
+    from_port = permission["FromPort"]
+    to_port = permission["ToPort"]
+    if not isinstance(protocol, str) or not protocol.strip():
+        raise ValueError("IpProtocol must be a non-empty string")
+    if (
+        not isinstance(from_port, int)
+        or isinstance(from_port, bool)
+        or not isinstance(to_port, int)
+        or isinstance(to_port, bool)
+        or not 0 <= from_port <= 65535
+        or not 0 <= to_port <= 65535
+        or from_port > to_port
+    ):
+        raise ValueError("Ingress ports must be an ordered range from 0 to 65535")
     ip_ranges = ip_permissions[0]["IpRanges"]
     if (
         not isinstance(ip_ranges, list)
@@ -231,6 +251,10 @@ def _validate_remediation_ast(source: str) -> ast.Module:
         or not isinstance(ip_ranges[0]["CidrIp"], str)
     ):
         raise ValueError("Exactly one CIDR range is required")
+    try:
+        ipaddress.ip_network(ip_ranges[0]["CidrIp"], strict=False)
+    except (TypeError, ValueError) as error:
+        raise ValueError("CidrIp must be a valid CIDR") from error
 
     return tree
 
