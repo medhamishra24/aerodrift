@@ -449,6 +449,7 @@ class RemediationWorkflowResult:
     message: str
     result_summary: str
     remediation_summary: str
+    action_taken: str
     audit_record: RemediationAuditRecord
     operation: dict[str, Any] | None = None
 
@@ -483,6 +484,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
                 "Affected resource: unavailable; targeted rule: unavailable; "
                 "final status: BLOCKED."
             ),
+            action_taken="No action taken: the remediation code was blocked before execution.",
             audit_record=audit_record,
         )
 
@@ -501,6 +503,18 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     logger.info("Remediation audit: validation result=passed")
     execution_result = execute_remediation_code(source)
     final_status = "SUCCESS" if execution_result.success else "FAILED"
+    action_taken = (
+        f"Revoked the {action_metadata.protocol} ingress rule for "
+        f"{security_group_id}: ports {action_metadata.port_range[0]}-"
+        f"{action_metadata.port_range[1]} from {action_metadata.source_cidr}."
+        if execution_result.success
+        else (
+            f"Attempted to revoke the {action_metadata.protocol} ingress rule for "
+            f"{security_group_id}: ports {action_metadata.port_range[0]}-"
+            f"{action_metadata.port_range[1]} from {action_metadata.source_cidr}, "
+            "but the controlled mock execution failed."
+        )
+    )
     remediation_summary = (
         f"Affected resource: {security_group_id}; targeted rule: "
         f"{permission['IpProtocol']} ports {permission['FromPort']}-"
@@ -529,6 +543,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             f"final status: {final_status}."
         ),
         remediation_summary=remediation_summary,
+        action_taken=action_taken,
         audit_record=audit_record,
         operation=execution_result.operation,
     )
