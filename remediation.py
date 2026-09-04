@@ -3,6 +3,7 @@
 import ast
 import ipaddress
 from dataclasses import dataclass
+from typing import Any
 
 from drift_detector import DriftFinding
 
@@ -126,6 +127,147 @@ def generate_remediation_code(remediation: RemediationInput) -> str:
         type_ignores=[],
     )
     return ast.unparse(ast.fix_missing_locations(module))
+
+
+@dataclass(frozen=True)
+class RemediationExecutionResult:
+    """Result of evaluating remediation code against the local mock client."""
+
+    success: bool
+    message: str
+    operation: dict[str, Any] | None = None
+
+
+class _LocalEc2Client:
+    """Capture the allowed remediation operation without contacting AWS."""
+
+    def __init__(self) -> None:
+        self.operation: dict[str, Any] | None = None
+
+    def revoke_security_group_ingress(self, **kwargs: Any) -> None:
+        self.operation = kwargs
+
+
+class _LocalBoto3:
+    """Minimal local replacement for the generated code's boto3 dependency."""
+
+    def __init__(self) -> None:
+        self.client_instance = _LocalEc2Client()
+
+    def client(self, service_name: str) -> _LocalEc2Client:
+        if service_name != "ec2":
+            raise ValueError("Only the local EC2 mock is allowed")
+        return self.client_instance
+
+
+def _validate_remediation_ast(source: str) -> ast.Module:
+    """Parse and enforce the exact AST shape produced by the generator."""
+    tree = ast.parse(source, mode="exec")
+    if len(tree.body) != 3:
+        raise ValueError("Remediation code must contain exactly three statements")
+
+    import_node, assignment_node, call_node = tree.body
+    if not (
+        isinstance(import_node, ast.Import)
+        and len(import_node.names) == 1
+        and import_node.names[0].name == "boto3"
+        and import_node.names[0].asname is None
+    ):
+        raise ValueError("Only the boto3 import is allowed")
+
+    if not (
+        isinstance(assignment_node, ast.Assign)
+        and len(assignment_node.targets) == 1
+        and isinstance(assignment_node.targets[0], ast.Name)
+        and assignment_node.targets[0].id == "ec2"
+        and isinstance(assignment_node.value, ast.Call)
+        and isinstance(assignment_node.value.func, ast.Attribute)
+        and isinstance(assignment_node.value.func.value, ast.Name)
+        and assignment_node.value.func.value.id == "boto3"
+        and assignment_node.value.func.attr == "client"
+        and len(assignment_node.value.args) == 1
+        and isinstance(assignment_node.value.args[0], ast.Constant)
+        and assignment_node.value.args[0].value == "ec2"
+        and not assignment_node.value.keywords
+    ):
+        raise ValueError("Only the local EC2 client assignment is allowed")
+
+    if not (
+        isinstance(call_node, ast.Expr)
+        and isinstance(call_node.value, ast.Call)
+        and isinstance(call_node.value.func, ast.Attribute)
+        and isinstance(call_node.value.func.value, ast.Name)
+        and call_node.value.func.value.id == "ec2"
+        and call_node.value.func.attr == "revoke_security_group_ingress"
+        and not call_node.value.args
+        and [keyword.arg for keyword in call_node.value.keywords]
+        == ["GroupId", "IpPermissions"]
+    ):
+        raise ValueError("Only security-group ingress revocation is allowed")
+
+    try:
+        group_id = ast.literal_eval(call_node.value.keywords[0].value)
+        ip_permissions = ast.literal_eval(call_node.value.keywords[1].value)
+    except (ValueError, TypeError, SyntaxError) as error:
+        raise ValueError("Remediation arguments must contain literals only") from error
+
+    if not isinstance(group_id, str) or not isinstance(ip_permissions, list):
+        raise ValueError("Remediation arguments have an invalid shape")
+    if len(ip_permissions) != 1 or not isinstance(ip_permissions[0], dict):
+        raise ValueError("Exactly one ingress permission is required")
+    if set(ip_permissions[0]) != {
+        "IpProtocol",
+        "FromPort",
+        "ToPort",
+        "IpRanges",
+    }:
+        raise ValueError("Ingress permission fields are not allowed")
+    ip_ranges = ip_permissions[0]["IpRanges"]
+    if (
+        not isinstance(ip_ranges, list)
+        or len(ip_ranges) != 1
+        or not isinstance(ip_ranges[0], dict)
+        or set(ip_ranges[0]) != {"CidrIp"}
+        or not isinstance(ip_ranges[0]["CidrIp"], str)
+    ):
+        raise ValueError("Exactly one CIDR range is required")
+
+    return tree
+
+
+def execute_remediation_code(source: str) -> RemediationExecutionResult:
+    """Execute approved remediation code against a local-only mock client."""
+    try:
+        _validate_remediation_ast(source)
+    except (SyntaxError, ValueError) as error:
+        return RemediationExecutionResult(False, f"Rejected remediation code: {error}")
+
+    local_boto3 = _LocalBoto3()
+
+    def restricted_import(
+        name: str,
+        globals: dict[str, Any] | None = None,
+        locals: dict[str, Any] | None = None,
+        fromlist: tuple[str, ...] = (),
+        level: int = 0,
+    ) -> _LocalBoto3:
+        if name != "boto3" or level != 0 or fromlist:
+            raise ImportError("Only the local boto3 mock is allowed")
+        return local_boto3
+
+    sandbox_globals: dict[str, Any] = {
+        "__builtins__": {"__import__": restricted_import}
+    }
+    try:
+        exec(compile(source, "<remediation-sandbox>", "exec"), sandbox_globals)
+    except Exception as error:
+        return RemediationExecutionResult(False, f"Sandbox execution failed: {error}")
+
+    return RemediationExecutionResult(
+        True,
+        "Remediation executed against the local mock client.",
+        local_boto3.client_instance.operation,
+    )
 
 
 def generate_recommendations(finding: DriftFinding) -> list[str]:
