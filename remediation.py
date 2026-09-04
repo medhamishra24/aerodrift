@@ -454,12 +454,66 @@ class RemediationWorkflowResult:
     operation: dict[str, Any] | None = None
 
 
+def _create_remediation_audit_record(
+    timestamp: str,
+    security_group_id: str | None,
+    validation_status: str,
+    execution_status: str,
+    final_result: Literal["SUCCESS", "FAILED", "BLOCKED"],
+    action_metadata: RemediationActionMetadata | None,
+) -> RemediationAuditRecord:
+    """Create the structured audit record shared by all workflow outcomes."""
+    return RemediationAuditRecord(
+        timestamp=timestamp,
+        security_group_id=security_group_id,
+        validation_status=validation_status,
+        execution_status=execution_status,
+        final_result=final_result,
+        action_metadata=action_metadata,
+    )
+
+
+def _log_remediation_audit_event(
+    final_result: Literal["SUCCESS", "FAILED", "BLOCKED"],
+    security_group_id: str | None = None,
+    action_metadata: RemediationActionMetadata | None = None,
+    reason: str | None = None,
+) -> None:
+    """Log one outcome-specific remediation audit event."""
+    if final_result == "BLOCKED":
+        logger.warning(
+            "Remediation audit event: action=BLOCKED; reason=%s",
+            reason,
+        )
+    elif final_result == "SUCCESS":
+        logger.info(
+            "Remediation audit event: action=SUCCESS; resource=%s; "
+            "rule=%s ports %s-%s from %s; controlled mock action succeeded=yes",
+            security_group_id,
+            action_metadata.protocol,
+            action_metadata.port_range[0],
+            action_metadata.port_range[1],
+            action_metadata.source_cidr,
+        )
+    else:
+        logger.warning(
+            "Remediation audit event: action=FAILED; resource=%s; "
+            "rule=%s ports %s-%s from %s; reason=%s",
+            security_group_id,
+            action_metadata.protocol,
+            action_metadata.port_range[0],
+            action_metadata.port_range[1],
+            action_metadata.source_cidr,
+            reason,
+        )
+
+
 def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     """Validate source, then execute it only through the local mock sandbox."""
     timestamp = datetime.now(timezone.utc).isoformat()
     is_valid, validation_message = validate_remediation_code(source)
     if not is_valid:
-        audit_record = RemediationAuditRecord(
+        audit_record = _create_remediation_audit_record(
             timestamp=timestamp,
             security_group_id=None,
             validation_status="rejected",
@@ -467,10 +521,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             final_result="BLOCKED",
             action_metadata=None,
         )
-        logger.warning(
-            "Remediation audit event: action=BLOCKED; reason=%s",
-            validation_message,
-        )
+        _log_remediation_audit_event("BLOCKED", reason=validation_message)
         logger.warning("Remediation audit: validation result=rejected; %s", validation_message)
         logger.info("Remediation audit: execution result=not attempted")
         logger.info("Remediation audit: final status=BLOCKED")
@@ -506,28 +557,13 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     )
     logger.info("Remediation audit: validation result=passed")
     execution_result = execute_remediation_code(source)
-    if execution_result.success:
-        logger.info(
-            "Remediation audit event: action=SUCCESS; resource=%s; "
-            "rule=%s ports %s-%s from %s; controlled mock action succeeded=yes",
-            security_group_id,
-            action_metadata.protocol,
-            action_metadata.port_range[0],
-            action_metadata.port_range[1],
-            action_metadata.source_cidr,
-        )
-    else:
-        logger.warning(
-            "Remediation audit event: action=FAILED; resource=%s; "
-            "rule=%s ports %s-%s from %s; reason=%s",
-            security_group_id,
-            action_metadata.protocol,
-            action_metadata.port_range[0],
-            action_metadata.port_range[1],
-            action_metadata.source_cidr,
-            execution_result.message,
-        )
     final_status = "SUCCESS" if execution_result.success else "FAILED"
+    _log_remediation_audit_event(
+        final_status,
+        security_group_id=security_group_id,
+        action_metadata=action_metadata,
+        reason=execution_result.message,
+    )
     action_taken = (
         f"Revoked the {action_metadata.protocol} ingress rule for "
         f"{security_group_id}: ports {action_metadata.port_range[0]}-"
@@ -546,7 +582,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         f"{permission['ToPort']} from {permission['IpRanges'][0]['CidrIp']}; "
         f"final status: {final_status}."
     )
-    audit_record = RemediationAuditRecord(
+    audit_record = _create_remediation_audit_record(
         timestamp=timestamp,
         security_group_id=security_group_id,
         validation_status="passed",
