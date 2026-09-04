@@ -288,6 +288,10 @@ class RemediationPreparationResult:
     ready_for_execution: bool
     source_code: str | None
     message: str
+    source_cidr: str | None = None
+    protocol: str | None = None
+    from_port: int | None = None
+    to_port: int | None = None
 
 
 def prepare_remediation_from_finding(
@@ -362,6 +366,10 @@ def prepare_remediation_from_finding(
         ready_for_execution=is_valid,
         source_code=source_code if is_valid else None,
         message=validation_message,
+        source_cidr=remediation_input.source_cidr if is_valid else None,
+        protocol=remediation_input.protocol if is_valid else None,
+        from_port=remediation_input.from_port if is_valid else None,
+        to_port=remediation_input.to_port if is_valid else None,
     )
 
 
