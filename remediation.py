@@ -232,6 +232,14 @@ def _validate_remediation_ast(source: str) -> ast.Module:
     to_port = permission["ToPort"]
     if not isinstance(protocol, str) or not protocol.strip():
         raise ValueError("IpProtocol must be a non-empty string")
+    protocol_name = protocol.strip().lower()
+    if protocol_name not in {"-1", "tcp", "udp", "icmp", "icmpv6"}:
+        try:
+            protocol_number = int(protocol_name)
+        except ValueError as error:
+            raise ValueError("IpProtocol must be a valid IP protocol") from error
+        if not 0 <= protocol_number <= 255:
+            raise ValueError("IpProtocol number must be between 0 and 255")
     if (
         not isinstance(from_port, int)
         or isinstance(from_port, bool)
@@ -262,8 +270,10 @@ def _validate_remediation_ast(source: str) -> ast.Module:
 def validate_remediation_code(source: str) -> tuple[bool, str]:
     """Validate remediation source without executing it."""
     try:
+        if not isinstance(source, str) or not source.strip():
+            raise ValueError("Remediation source must be a non-empty string")
         _validate_remediation_ast(source)
-    except (SyntaxError, ValueError) as error:
+    except (SyntaxError, TypeError, ValueError) as error:
         return False, f"Rejected remediation code: {error}"
     return True, "Remediation code passed AST validation."
 
@@ -356,7 +366,7 @@ def prepare_remediation_from_finding(
 
 
 def execute_remediation_code(source: str) -> RemediationExecutionResult:
-    """Execute approved remediation code against a local-only mock client."""
+    """Execute allowlisted remediation code against the local mock client only."""
     is_valid, validation_message = validate_remediation_code(source)
     if not is_valid:
         return RemediationExecutionResult(False, validation_message)
@@ -381,6 +391,12 @@ def execute_remediation_code(source: str) -> RemediationExecutionResult:
         exec(compile(source, "<remediation-sandbox>", "exec"), sandbox_globals)
     except Exception as error:
         return RemediationExecutionResult(False, f"Sandbox execution failed: {error}")
+
+    if local_boto3.client_instance.operation is None:
+        return RemediationExecutionResult(
+            False,
+            "Sandbox execution produced no allowed remediation operation.",
+        )
 
     return RemediationExecutionResult(
         True,
