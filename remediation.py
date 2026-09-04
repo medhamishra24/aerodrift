@@ -5,7 +5,7 @@ import ipaddress
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Any, Iterable, Literal
 
 from drift_detector import DriftFinding
 
@@ -437,6 +437,38 @@ class RemediationAuditRecord:
     execution_status: str
     final_result: Literal["SUCCESS", "FAILED", "BLOCKED"]
     action_metadata: RemediationActionMetadata | None = None
+
+
+@dataclass(frozen=True)
+class RemediationAuditSummary:
+    """Aggregate outcome counts for remediation audit records."""
+
+    total_attempts: int
+    success_count: int
+    failed_count: int
+    blocked_count: int
+
+    @property
+    def message(self) -> str:
+        """Return a concise human-readable outcome summary."""
+        return (
+            f"Remediation audit summary: total attempts={self.total_attempts}; "
+            f"SUCCESS={self.success_count}; FAILED={self.failed_count}; "
+            f"BLOCKED={self.blocked_count}."
+        )
+
+
+def summarize_remediation_audits(
+    audit_records: Iterable[RemediationAuditRecord],
+) -> RemediationAuditSummary:
+    """Count SUCCESS, FAILED, and BLOCKED remediation audit outcomes."""
+    records = list(audit_records)
+    return RemediationAuditSummary(
+        total_attempts=len(records),
+        success_count=sum(record.final_result == "SUCCESS" for record in records),
+        failed_count=sum(record.final_result == "FAILED" for record in records),
+        blocked_count=sum(record.final_result == "BLOCKED" for record in records),
+    )
 
 
 @dataclass(frozen=True)
