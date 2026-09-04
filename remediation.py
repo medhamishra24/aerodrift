@@ -467,6 +467,10 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             final_result="BLOCKED",
             action_metadata=None,
         )
+        logger.warning(
+            "Remediation audit event: action=BLOCKED; reason=%s",
+            validation_message,
+        )
         logger.warning("Remediation audit: validation result=rejected; %s", validation_message)
         logger.info("Remediation audit: execution result=not attempted")
         logger.info("Remediation audit: final status=BLOCKED")
