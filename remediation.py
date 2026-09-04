@@ -5,7 +5,7 @@ import ipaddress
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from drift_detector import DriftFinding
 
@@ -426,7 +426,7 @@ class RemediationAuditRecord:
     security_group_id: str | None
     validation_status: str
     execution_status: str
-    final_result: str
+    final_result: Literal["SUCCESS", "FAILED", "BLOCKED"]
 
 
 @dataclass(frozen=True)
@@ -452,11 +452,11 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             security_group_id=None,
             validation_status="rejected",
             execution_status="not attempted",
-            final_result="rejected",
+            final_result="BLOCKED",
         )
         logger.warning("Remediation audit: validation result=rejected; %s", validation_message)
         logger.info("Remediation audit: execution result=not attempted")
-        logger.info("Remediation audit: final status=rejected")
+        logger.info("Remediation audit: final status=BLOCKED")
         logger.info("Remediation audit record: %s", audit_record)
         return RemediationWorkflowResult(
             validation_passed=False,
@@ -465,7 +465,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             message=validation_message,
             result_summary=(
                 "Validation passed: no; execution attempted: no; "
-                "mock remediation succeeded: no."
+                "mock remediation succeeded: no; final status: BLOCKED."
             ),
             audit_record=audit_record,
         )
@@ -476,7 +476,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     )
     logger.info("Remediation audit: validation result=passed")
     execution_result = execute_remediation_code(source)
-    final_status = "succeeded" if execution_result.success else "failed"
+    final_status = "SUCCESS" if execution_result.success else "FAILED"
     audit_record = RemediationAuditRecord(
         timestamp=timestamp,
         security_group_id=security_group_id,
@@ -494,7 +494,8 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         message=execution_result.message,
         result_summary=(
             "Validation passed: yes; execution attempted: yes; "
-            f"mock remediation succeeded: {'yes' if execution_result.success else 'no'}."
+            f"mock remediation succeeded: {'yes' if execution_result.success else 'no'}; "
+            f"final status: {final_status}."
         ),
         audit_record=audit_record,
         operation=execution_result.operation,
