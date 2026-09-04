@@ -244,6 +244,93 @@ def validate_remediation_code(source: str) -> tuple[bool, str]:
     return True, "Remediation code passed AST validation."
 
 
+@dataclass(frozen=True)
+class RemediationPreparationResult:
+    """Result of preparing remediation from an existing drift finding."""
+
+    drift_detected: bool
+    validation_passed: bool
+    execution_attempted: bool
+    ready_for_execution: bool
+    source_code: str | None
+    message: str
+
+
+def prepare_remediation_from_finding(
+    finding: DriftFinding,
+) -> RemediationPreparationResult:
+    """Prepare validated remediation source for an unsafe drift finding.
+
+    The function only generates and validates source code. It never invokes
+    the controlled execution function.
+
+    Args:
+        finding: Existing result from :func:`detect_security_drift`.
+
+    Returns:
+        A structured preparation result containing source code only when an
+        unsafe finding has valid security-group information.
+    """
+    if not finding.internet_to_database_path:
+        return RemediationPreparationResult(
+            drift_detected=False,
+            validation_passed=False,
+            execution_attempted=False,
+            ready_for_execution=False,
+            source_code=None,
+            message="No drift detected; remediation was not generated.",
+        )
+
+    if not isinstance(finding.affected_security_group, str) or not finding.affected_security_group.strip():
+        return RemediationPreparationResult(
+            drift_detected=True,
+            validation_passed=False,
+            execution_attempted=False,
+            ready_for_execution=False,
+            source_code=None,
+            message="Rejected remediation: affected security group is missing.",
+        )
+    if not isinstance(finding.security_group_rule, str) or not finding.security_group_rule.strip():
+        return RemediationPreparationResult(
+            drift_detected=True,
+            validation_passed=False,
+            execution_attempted=False,
+            ready_for_execution=False,
+            source_code=None,
+            message="Rejected remediation: security-group CIDR is missing.",
+        )
+
+    try:
+        remediation_input = RemediationInput(
+            security_group_id=finding.affected_security_group,
+            source_cidr=finding.security_group_rule,
+            protocol="tcp",
+            from_port=80,
+            to_port=80,
+            reason="Revoke the unsafe public security-group ingress rule.",
+        )
+        source_code = generate_remediation_code(remediation_input)
+    except ValueError as error:
+        return RemediationPreparationResult(
+            drift_detected=True,
+            validation_passed=False,
+            execution_attempted=False,
+            ready_for_execution=False,
+            source_code=None,
+            message=f"Rejected remediation: {error}",
+        )
+
+    is_valid, validation_message = validate_remediation_code(source_code)
+    return RemediationPreparationResult(
+        drift_detected=True,
+        validation_passed=is_valid,
+        execution_attempted=False,
+        ready_for_execution=is_valid,
+        source_code=source_code if is_valid else None,
+        message=validation_message,
+    )
+
+
 def execute_remediation_code(source: str) -> RemediationExecutionResult:
     """Execute approved remediation code against a local-only mock client."""
     is_valid, validation_message = validate_remediation_code(source)
