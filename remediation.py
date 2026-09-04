@@ -516,6 +516,17 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             action_metadata.port_range[1],
             action_metadata.source_cidr,
         )
+    else:
+        logger.warning(
+            "Remediation audit event: action=FAILED; resource=%s; "
+            "rule=%s ports %s-%s from %s; reason=%s",
+            security_group_id,
+            action_metadata.protocol,
+            action_metadata.port_range[0],
+            action_metadata.port_range[1],
+            action_metadata.source_cidr,
+            execution_result.message,
+        )
     final_status = "SUCCESS" if execution_result.success else "FAILED"
     action_taken = (
         f"Revoked the {action_metadata.protocol} ingress rule for "
