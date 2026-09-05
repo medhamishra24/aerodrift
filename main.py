@@ -1,5 +1,6 @@
 """Run the AeroDrift scan using local mock data."""
 
+import argparse
 import time
 
 from rich.console import Console
@@ -7,7 +8,9 @@ from rich.console import Console
 from aws_data import load_mock_resources
 from dashboard import display_dashboard
 from database import (
+    compare_topology_snapshots,
     get_latest_topology_diff,
+    get_topology_snapshot,
     save_scan_result,
     save_topology_snapshot,
     summarize_topology_diff,
@@ -132,5 +135,59 @@ def run_scan() -> None:
     console.print("[bold green]Scan result saved to data/scan_results.db[/bold green]")
 
 
+def compare_snapshots_by_timestamp(
+    first_timestamp: str,
+    second_timestamp: str,
+) -> None:
+    """Display a historical topology comparison selected by timestamps."""
+    console = Console()
+    first_snapshot = get_topology_snapshot(timestamp=first_timestamp)
+    second_snapshot = get_topology_snapshot(timestamp=second_timestamp)
+    if first_snapshot is None or second_snapshot is None:
+        console.print(
+            "[bold yellow]Historical topology comparison: NO HISTORY[/bold yellow]"
+        )
+        return
+
+    diff = compare_topology_snapshots(
+        first_snapshot["snapshot_id"],
+        second_snapshot["snapshot_id"],
+    )
+    if diff is None:
+        console.print(
+            "[bold yellow]Historical topology comparison: NO HISTORY[/bold yellow]"
+        )
+    elif not any(
+        diff[key]
+        for key in ("added_nodes", "removed_nodes", "added_edges", "removed_edges")
+    ):
+        console.print(
+            "[bold green]Historical topology comparison: "
+            "NO TOPOLOGY CHANGE[/bold green]"
+        )
+    else:
+        console.print(
+            "[bold yellow]Historical topology comparison: "
+            f"{summarize_topology_diff(first_snapshot['snapshot_id'], second_snapshot['snapshot_id'])}"
+            "[/bold yellow]"
+        )
+
+
+def _parse_arguments() -> argparse.Namespace:
+    """Parse optional historical comparison CLI arguments."""
+    parser = argparse.ArgumentParser(description="Run the AeroDrift scan.")
+    parser.add_argument(
+        "--compare-timestamps",
+        nargs=2,
+        metavar=("FIRST_TIMESTAMP", "SECOND_TIMESTAMP"),
+        help="Compare two saved topology snapshots by their timestamps.",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    run_scan()
+    arguments = _parse_arguments()
+    if arguments.compare_timestamps:
+        compare_snapshots_by_timestamp(*arguments.compare_timestamps)
+    else:
+        run_scan()
