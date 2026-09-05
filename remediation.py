@@ -447,12 +447,16 @@ class RemediationAuditSummary:
     success_count: int
     failed_count: int
     blocked_count: int
+    validation_passed_count: int = 0
+    validation_blocked_count: int = 0
 
     @property
     def message(self) -> str:
         """Return a concise human-readable outcome summary."""
         return (
             f"Remediation audit summary: total attempts={self.total_attempts}; "
+            f"AST validation passed={self.validation_passed_count}; "
+            f"AST validation blocked={self.validation_blocked_count}; "
             f"SUCCESS={self.success_count}; FAILED={self.failed_count}; "
             f"BLOCKED={self.blocked_count}."
         )
@@ -462,6 +466,8 @@ def format_remediation_audit_summary(summary: RemediationAuditSummary) -> str:
     """Format remediation outcome counts as a compact audit report."""
     return (
         f"Attempts: {summary.total_attempts} | "
+        f"AST validation passed: {summary.validation_passed_count} | "
+        f"AST validation blocked: {summary.validation_blocked_count} | "
         f"SUCCESS: {summary.success_count} | "
         f"FAILED: {summary.failed_count} | "
         f"BLOCKED: {summary.blocked_count}"
@@ -478,6 +484,12 @@ def summarize_remediation_audits(
         success_count=sum(record.final_result == "SUCCESS" for record in records),
         failed_count=sum(record.final_result == "FAILED" for record in records),
         blocked_count=sum(record.final_result == "BLOCKED" for record in records),
+        validation_passed_count=sum(
+            record.validation_status == "passed" for record in records
+        ),
+        validation_blocked_count=sum(
+            record.validation_status == "rejected" for record in records
+        ),
     )
 
 
