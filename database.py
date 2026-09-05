@@ -259,6 +259,41 @@ def export_topology_snapshot(snapshot_id: str) -> dict[str, object]:
     }
 
 
+def count_topology_snapshot_elements(snapshot_id: str) -> dict[str, object]:
+    """Return node and edge counts for one stored topology snapshot."""
+    empty_result = {
+        "snapshot_id": snapshot_id,
+        "node_count": 0,
+        "edge_count": 0,
+        "status": "INVALID",
+    }
+    if not isinstance(snapshot_id, str) or not snapshot_id.strip():
+        return empty_result
+
+    try:
+        snapshot = export_topology_snapshot(snapshot_id)
+    except (KeyError, TypeError, json.JSONDecodeError):
+        return empty_result
+
+    if snapshot["snapshot_id"] is None:
+        return {
+            **empty_result,
+            "status": "NOT_FOUND",
+        }
+
+    nodes = snapshot["nodes"]
+    edges = snapshot["edges"]
+    if not isinstance(nodes, list) or not isinstance(edges, list):
+        return empty_result
+
+    return {
+        "snapshot_id": snapshot["snapshot_id"],
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+        "status": "OK",
+    }
+
+
 def validate_topology_snapshot(snapshot_id: str) -> dict[str, object]:
     """Validate the stored node and edge structure for one snapshot."""
     try:
