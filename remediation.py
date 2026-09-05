@@ -3,6 +3,7 @@
 import ast
 import ipaddress
 import logging
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable, Literal
@@ -440,6 +441,7 @@ class RemediationAuditRecord:
     generated_code: str | None = None
     safety_decision: Literal["SAFE", "BLOCKED", "INVALID"] = "INVALID"
     execution_timestamp: str | None = None
+    attempt_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -530,6 +532,7 @@ class RemediationWorkflowResult:
 
 
 def _create_remediation_audit_record(
+    attempt_id: str,
     timestamp: str,
     security_group_id: str | None,
     validation_status: str,
@@ -542,6 +545,7 @@ def _create_remediation_audit_record(
 ) -> RemediationAuditRecord:
     """Create the structured audit record shared by all workflow outcomes."""
     return RemediationAuditRecord(
+        attempt_id=attempt_id,
         timestamp=timestamp,
         security_group_id=security_group_id,
         validation_status=validation_status,
@@ -556,6 +560,7 @@ def _create_remediation_audit_record(
 
 def _log_remediation_audit_event(
     final_result: Literal["SUCCESS", "FAILED", "BLOCKED"],
+    attempt_id: str,
     security_group_id: str | None = None,
     action_metadata: RemediationActionMetadata | None = None,
     reason: str | None = None,
@@ -563,13 +568,15 @@ def _log_remediation_audit_event(
     """Log one outcome-specific remediation audit event."""
     if final_result == "BLOCKED":
         logger.warning(
-            "Remediation audit event: action=BLOCKED; reason=%s",
+            "Remediation audit event: attempt_id=%s; action=BLOCKED; reason=%s",
+            attempt_id,
             reason,
         )
     elif final_result == "SUCCESS":
         logger.info(
-            "Remediation audit event: action=SUCCESS; resource=%s; "
+            "Remediation audit event: attempt_id=%s; action=SUCCESS; resource=%s; "
             "rule=%s ports %s-%s from %s; controlled mock action succeeded=yes",
+            attempt_id,
             security_group_id,
             action_metadata.protocol,
             action_metadata.port_range[0],
@@ -578,8 +585,9 @@ def _log_remediation_audit_event(
         )
     else:
         logger.warning(
-            "Remediation audit event: action=FAILED; resource=%s; "
+            "Remediation audit event: attempt_id=%s; action=FAILED; resource=%s; "
             "rule=%s ports %s-%s from %s; reason=%s",
+            attempt_id,
             security_group_id,
             action_metadata.protocol,
             action_metadata.port_range[0],
@@ -591,6 +599,7 @@ def _log_remediation_audit_event(
 
 def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     """Validate source, then execute it only through the local mock sandbox."""
+    attempt_id = uuid.uuid4().hex
     timestamp = datetime.now(timezone.utc).isoformat()
     is_valid, validation_message = validate_remediation_code(source)
     if not is_valid:
@@ -603,6 +612,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             except (SyntaxError, TypeError):
                 safety_decision = "INVALID"
         audit_record = _create_remediation_audit_record(
+            attempt_id=attempt_id,
             timestamp=timestamp,
             security_group_id=None,
             validation_status="rejected",
@@ -612,10 +622,21 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             safety_decision=safety_decision,
             execution_timestamp=timestamp,
         )
-        _log_remediation_audit_event("BLOCKED", reason=validation_message)
-        logger.warning("Remediation audit: validation result=rejected; %s", validation_message)
-        logger.info("Remediation audit: execution result=not attempted")
-        logger.info("Remediation audit: final status=BLOCKED")
+        _log_remediation_audit_event(
+            "BLOCKED", attempt_id=attempt_id, reason=validation_message
+        )
+        logger.warning(
+            "Remediation audit: attempt_id=%s; validation result=rejected; %s",
+            attempt_id,
+            validation_message,
+        )
+        logger.info(
+            "Remediation audit: attempt_id=%s; execution result=not attempted",
+            attempt_id,
+        )
+        logger.info(
+            "Remediation audit: attempt_id=%s; final status=BLOCKED", attempt_id
+        )
         logger.info("Remediation audit record: %s", audit_record)
         return RemediationWorkflowResult(
             validation_passed=False,
@@ -654,11 +675,14 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         f"'ToPort': {permission['ToPort']!r}, "
         f"'IpRanges': [{{'CidrIp': {permission['IpRanges'][0]['CidrIp']!r}}}]}}])"
     )
-    logger.info("Remediation audit: validation result=passed")
+    logger.info(
+        "Remediation audit: attempt_id=%s; validation result=passed", attempt_id
+    )
     execution_result = execute_remediation_code(source)
     final_status = "SUCCESS" if execution_result.success else "FAILED"
     _log_remediation_audit_event(
         final_status,
+        attempt_id=attempt_id,
         security_group_id=security_group_id,
         action_metadata=action_metadata,
         reason=execution_result.message,
@@ -682,6 +706,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         f"final status: {final_status}."
     )
     audit_record = _create_remediation_audit_record(
+        attempt_id=attempt_id,
         timestamp=timestamp,
         security_group_id=security_group_id,
         validation_status="passed",
@@ -692,8 +717,16 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         safety_decision="SAFE",
         execution_timestamp=timestamp,
     )
-    logger.info("Remediation audit: execution result=%s", final_status)
-    logger.info("Remediation audit: final status=%s", final_status)
+    logger.info(
+        "Remediation audit: attempt_id=%s; execution result=%s",
+        attempt_id,
+        final_status,
+    )
+    logger.info(
+        "Remediation audit: attempt_id=%s; final status=%s",
+        attempt_id,
+        final_status,
+    )
     logger.info("Remediation audit record: %s", audit_record)
     return RemediationWorkflowResult(
         validation_passed=True,
