@@ -252,6 +252,52 @@ def compare_topology_snapshots(
     }
 
 
+def get_latest_topology_diff() -> dict[str, object]:
+    """Return the diff between the latest and previous snapshots."""
+    snapshots = list_topology_snapshots(limit=2)
+    if len(snapshots) < 2:
+        return {
+            "status": "NO HISTORY",
+            "previous_snapshot_id": None,
+            "latest_snapshot_id": snapshots[0]["snapshot_id"]
+            if snapshots
+            else None,
+            "added_nodes": [],
+            "removed_nodes": [],
+            "added_edges": [],
+            "removed_edges": [],
+        }
+
+    previous_snapshot_id = snapshots[0]["snapshot_id"]
+    latest_snapshot_id = snapshots[1]["snapshot_id"]
+    diff = compare_topology_snapshots(previous_snapshot_id, latest_snapshot_id)
+    if diff is None:
+        return {
+            "status": "NO HISTORY",
+            "previous_snapshot_id": previous_snapshot_id,
+            "latest_snapshot_id": latest_snapshot_id,
+            "added_nodes": [],
+            "removed_nodes": [],
+            "added_edges": [],
+            "removed_edges": [],
+        }
+
+    return {
+        "status": "CHANGES DETECTED"
+        if any(
+            diff[key]
+            for key in ("added_nodes", "removed_nodes", "added_edges", "removed_edges")
+        )
+        else "NO CHANGE",
+        "previous_snapshot_id": previous_snapshot_id,
+        "latest_snapshot_id": latest_snapshot_id,
+        "added_nodes": diff["added_nodes"],
+        "removed_nodes": diff["removed_nodes"],
+        "added_edges": diff["added_edges"],
+        "removed_edges": diff["removed_edges"],
+    }
+
+
 def has_topology_changes(
     first_snapshot_id: str,
     second_snapshot_id: str,
