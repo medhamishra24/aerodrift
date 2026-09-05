@@ -6,7 +6,7 @@ from rich.console import Console
 
 from aws_data import load_mock_resources
 from dashboard import display_dashboard
-from database import save_scan_result
+from database import save_scan_result, save_topology_snapshot
 from drift_detector import detect_security_drift
 from graph_engine import apply_mock_security_group_drift, build_topology
 from remediation import (
@@ -26,6 +26,10 @@ def run_scan() -> None:
 
     console.print("[bold cyan]Building cloud topology graph...[/bold cyan]")
     cloud_topology = build_topology(mock_resources)
+    snapshot_id = save_topology_snapshot(cloud_topology)
+    console.print(
+        f"[bold green]Topology snapshot saved: {snapshot_id}[/bold green]"
+    )
 
     console.print("[bold cyan]Testing mock security-group drift...[/bold cyan]")
     cloud_topology.remove_edge("sg-public", "web-server")
