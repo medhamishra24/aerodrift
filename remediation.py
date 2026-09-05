@@ -439,6 +439,7 @@ class RemediationAuditRecord:
     action_metadata: RemediationActionMetadata | None = None
     generated_code: str | None = None
     safety_decision: Literal["SAFE", "BLOCKED", "INVALID"] = "INVALID"
+    execution_timestamp: str | None = None
 
 
 @dataclass(frozen=True)
@@ -537,6 +538,7 @@ def _create_remediation_audit_record(
     action_metadata: RemediationActionMetadata | None,
     generated_code: str | None = None,
     safety_decision: Literal["SAFE", "BLOCKED", "INVALID"] = "INVALID",
+    execution_timestamp: str | None = None,
 ) -> RemediationAuditRecord:
     """Create the structured audit record shared by all workflow outcomes."""
     return RemediationAuditRecord(
@@ -548,6 +550,7 @@ def _create_remediation_audit_record(
         action_metadata=action_metadata,
         generated_code=generated_code,
         safety_decision=safety_decision,
+        execution_timestamp=execution_timestamp,
     )
 
 
@@ -607,6 +610,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             final_result="BLOCKED",
             action_metadata=None,
             safety_decision=safety_decision,
+            execution_timestamp=timestamp,
         )
         _log_remediation_audit_event("BLOCKED", reason=validation_message)
         logger.warning("Remediation audit: validation result=rejected; %s", validation_message)
@@ -686,6 +690,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         action_metadata=action_metadata,
         generated_code=generated_code,
         safety_decision="SAFE",
+        execution_timestamp=timestamp,
     )
     logger.info("Remediation audit: execution result=%s", final_status)
     logger.info("Remediation audit: final status=%s", final_status)
