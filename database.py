@@ -50,6 +50,9 @@ SELECT_LATEST_SNAPSHOT_SQL: Final[str] = (
     "FROM topology_snapshots "
     "ORDER BY snapshot_time DESC, rowid DESC LIMIT 1"
 )
+COUNT_SNAPSHOTS_SQL: Final[str] = (
+    "SELECT COUNT(*) FROM topology_snapshots"
+)
 
 
 def initialize_database() -> None:
@@ -205,6 +208,23 @@ def get_latest_topology_snapshot() -> dict[str, object] | None:
         "timestamp": row[1],
         "topology": json.loads(row[2]),
     }
+
+
+def count_topology_snapshots() -> int:
+    """Return the number of stored topology snapshots."""
+    initialize_database()
+    try:
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            row = connection.execute(COUNT_SNAPSHOTS_SQL).fetchone()
+    except sqlite3.Error as error:
+        message = f"Unable to count topology snapshots in SQLite database: {DATABASE_PATH}"
+        raise RuntimeError(message) from error
+    return int(row[0]) if row is not None else 0
+
+
+def topology_history_available() -> bool:
+    """Return whether at least two snapshots are available for comparison."""
+    return count_topology_snapshots() >= 2
 
 
 def compare_topology_snapshots(
