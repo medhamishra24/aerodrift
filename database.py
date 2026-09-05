@@ -1,10 +1,12 @@
 """SQLite persistence for AeroDrift scan results."""
 
+import json
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Final
+from uuid import uuid4
 
 DATABASE_PATH: Final[Path] = Path(__file__).parent / "data" / "scan_results.db"
 CREATE_TABLE_SQL: Final[str] = """
@@ -15,8 +17,19 @@ CREATE_TABLE_SQL: Final[str] = """
         recommendation TEXT NOT NULL
     )
 """
+CREATE_SNAPSHOT_TABLE_SQL: Final[str] = """
+    CREATE TABLE IF NOT EXISTS topology_snapshots (
+        snapshot_id TEXT PRIMARY KEY,
+        snapshot_time TEXT NOT NULL,
+        topology_data TEXT NOT NULL
+    )
+"""
 INSERT_RESULT_SQL: Final[str] = (
     "INSERT INTO scan_results (scan_time, status, recommendation) VALUES (?, ?, ?)"
+)
+INSERT_SNAPSHOT_SQL: Final[str] = (
+    "INSERT INTO topology_snapshots "
+    "(snapshot_id, snapshot_time, topology_data) VALUES (?, ?, ?)"
 )
 
 
@@ -32,6 +45,7 @@ def initialize_database() -> None:
         with closing(sqlite3.connect(DATABASE_PATH)) as connection:
             with connection:
                 connection.execute(CREATE_TABLE_SQL)
+                connection.execute(CREATE_SNAPSHOT_TABLE_SQL)
     except OSError as error:
         message = f"Unable to create database directory: {DATABASE_PATH.parent}"
         raise RuntimeError(message) from error
@@ -65,3 +79,36 @@ def save_scan_result(status: str, recommendations: list[str]) -> None:
     except sqlite3.Error as error:
         message = f"Unable to save scan result to SQLite database: {DATABASE_PATH}"
         raise RuntimeError(message) from error
+
+
+def save_topology_snapshot(topology: object) -> str:
+    """Persist a serialized local topology snapshot and return its ID."""
+    initialize_database()
+    snapshot_id = uuid4().hex
+    snapshot_time = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    topology_data = json.dumps(
+        {
+            "nodes": [
+                {"id": node_id, **attributes}
+                for node_id, attributes in topology.nodes(data=True)
+            ],
+            "edges": [
+                {"source": source, "target": target, **attributes}
+                for source, target, attributes in topology.edges(data=True)
+            ],
+        },
+        sort_keys=True,
+        default=str,
+    )
+
+    try:
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            with connection:
+                connection.execute(
+                    INSERT_SNAPSHOT_SQL,
+                    (snapshot_id, snapshot_time, topology_data),
+                )
+    except sqlite3.Error as error:
+        message = f"Unable to save topology snapshot to SQLite database: {DATABASE_PATH}"
+        raise RuntimeError(message) from error
+    return snapshot_id
