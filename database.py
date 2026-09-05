@@ -228,6 +228,28 @@ def compare_topology_snapshots(
     }
 
 
+def has_topology_changes(
+    first_snapshot_id: str,
+    second_snapshot_id: str,
+    include_diff: bool = False,
+) -> bool | tuple[bool, dict[str, object] | None]:
+    """Return whether two snapshots differ, optionally with their diff."""
+    if (
+        not isinstance(first_snapshot_id, str)
+        or not first_snapshot_id.strip()
+        or not isinstance(second_snapshot_id, str)
+        or not second_snapshot_id.strip()
+    ):
+        diff = None
+    else:
+        diff = compare_topology_snapshots(first_snapshot_id, second_snapshot_id)
+
+    has_changes = diff is not None and any(
+        diff[key] for key in ("added_nodes", "removed_nodes", "added_edges", "removed_edges")
+    )
+    return (has_changes, diff) if include_diff else has_changes
+
+
 def summarize_topology_diff(
     first_snapshot_id: str,
     second_snapshot_id: str,
