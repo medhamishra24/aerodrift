@@ -443,6 +443,7 @@ class RemediationAuditRecord:
     execution_timestamp: str | None = None
     attempt_id: str = ""
     lifecycle_stage: Literal["VALIDATED", "EXECUTED", "COMPLETED"] = "VALIDATED"
+    completion_summary: str = ""
 
 
 @dataclass(frozen=True)
@@ -457,6 +458,7 @@ class RemediationAuditSummary:
     validation_blocked_count: int = 0
     targeted_rule_details: tuple[str, ...] = ()
     safety_decisions: tuple[str, ...] = ()
+    completion_summaries: tuple[str, ...] = ()
 
     @property
     def message(self) -> str:
@@ -484,6 +486,8 @@ def format_remediation_audit_summary(summary: RemediationAuditSummary) -> str:
     report += "\n" + ("\n".join(summary.targeted_rule_details) or "None")
     report += "\nSafety decisions:"
     report += "\n" + (", ".join(summary.safety_decisions) or "None")
+    report += "\nRemediation completion summaries:"
+    report += "\n" + ("\n".join(summary.completion_summaries) or "None")
     return report
 
 
@@ -514,6 +518,7 @@ def summarize_remediation_audits(
             and record.action_metadata is not None
         ),
         safety_decisions=tuple(record.safety_decision for record in records),
+        completion_summaries=tuple(record.completion_summary for record in records),
     )
 
 
@@ -546,6 +551,18 @@ def _create_remediation_audit_record(
     lifecycle_stage: Literal["VALIDATED", "EXECUTED", "COMPLETED"] = "VALIDATED",
 ) -> RemediationAuditRecord:
     """Create the structured audit record shared by all workflow outcomes."""
+    target_summary = (
+        f"security group {security_group_id}; "
+        f"{action_metadata.protocol} ports {action_metadata.port_range[0]}-"
+        f"{action_metadata.port_range[1]} from {action_metadata.source_cidr}"
+        if security_group_id is not None and action_metadata is not None
+        else "targeted rule unavailable"
+    )
+    completion_summary = (
+        f"Attempt {attempt_id} completed at {execution_timestamp or timestamp}; "
+        f"lifecycle={lifecycle_stage}; target={target_summary}; "
+        f"final status={final_result}."
+    )
     return RemediationAuditRecord(
         attempt_id=attempt_id,
         timestamp=timestamp,
@@ -558,6 +575,7 @@ def _create_remediation_audit_record(
         safety_decision=safety_decision,
         execution_timestamp=execution_timestamp,
         lifecycle_stage=lifecycle_stage,
+        completion_summary=completion_summary,
     )
 
 
