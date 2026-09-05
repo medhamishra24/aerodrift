@@ -1,6 +1,7 @@
 """SQLite persistence for AeroDrift scan results."""
 
 import json
+import networkx as nx
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
@@ -341,6 +342,77 @@ def validate_topology_snapshot(snapshot_id: str) -> dict[str, object]:
             if not errors
             else "Topology snapshot structure is invalid."
         ),
+    }
+
+
+def check_topology_snapshot_reconstructable(
+    snapshot_id: str,
+) -> dict[str, object]:
+    """Check whether a stored snapshot rebuilds into a usable graph."""
+    validation = validate_topology_snapshot(snapshot_id)
+    if not validation["valid"]:
+        errors = validation["errors"]
+        return {
+            "status": "INVALID",
+            "snapshot_id": snapshot_id,
+            "reason": errors[0] if errors else "Snapshot structure is invalid.",
+        }
+
+    try:
+        snapshot = export_topology_snapshot(snapshot_id)
+        nodes = snapshot["nodes"]
+        edges = snapshot["edges"]
+        graph = nx.DiGraph()
+        node_ids: set[object] = set()
+        for node in nodes:
+            node_id = node["id"]
+            if node_id in node_ids:
+                return {
+                    "status": "INVALID",
+                    "snapshot_id": snapshot_id,
+                    "reason": f"Duplicate node ID: {node_id}.",
+                }
+            node_ids.add(node_id)
+            graph.add_node(
+                node_id,
+                **{key: value for key, value in node.items() if key != "id"},
+            )
+
+        for edge in edges:
+            source = edge["source"]
+            target = edge["target"]
+            if source not in node_ids or target not in node_ids:
+                return {
+                    "status": "INVALID",
+                    "snapshot_id": snapshot_id,
+                    "reason": f"Edge references an unknown node: {source} -> {target}.",
+                }
+            graph.add_edge(
+                source,
+                target,
+                **{
+                    key: value
+                    for key, value in edge.items()
+                    if key not in {"source", "target"}
+                },
+            )
+    except (KeyError, TypeError, ValueError, nx.NetworkXError) as error:
+        return {
+            "status": "INVALID",
+            "snapshot_id": snapshot_id,
+            "reason": f"Topology could not be reconstructed: {error}",
+        }
+
+    if graph.number_of_nodes() != len(nodes) or graph.number_of_edges() != len(edges):
+        return {
+            "status": "INVALID",
+            "snapshot_id": snapshot_id,
+            "reason": "Reconstructed graph counts do not match stored data.",
+        }
+    return {
+        "status": "VALID",
+        "snapshot_id": snapshot_id,
+        "reason": "Nodes and edges reconstructed successfully.",
     }
 
 
