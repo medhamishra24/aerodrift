@@ -181,3 +181,48 @@ def list_topology_snapshots(limit: int = 10) -> list[dict[str, object]]:
         }
         for row in rows
     ]
+
+
+def compare_topology_snapshots(
+    first_snapshot_id: str,
+    second_snapshot_id: str,
+) -> dict[str, object] | None:
+    """Return added and removed nodes and edges between two snapshots."""
+    first_snapshot = get_topology_snapshot(snapshot_id=first_snapshot_id)
+    second_snapshot = get_topology_snapshot(snapshot_id=second_snapshot_id)
+    if first_snapshot is None or second_snapshot is None:
+        return None
+
+    first_topology = first_snapshot["topology"]
+    second_topology = second_snapshot["topology"]
+    first_nodes = {node["id"]: node for node in first_topology["nodes"]}
+    second_nodes = {node["id"]: node for node in second_topology["nodes"]}
+    first_edges = {
+        (edge["source"], edge["target"]): edge
+        for edge in first_topology["edges"]
+    }
+    second_edges = {
+        (edge["source"], edge["target"]): edge
+        for edge in second_topology["edges"]
+    }
+
+    return {
+        "first_snapshot_id": first_snapshot_id,
+        "second_snapshot_id": second_snapshot_id,
+        "added_nodes": [
+            second_nodes[node_id]
+            for node_id in sorted(second_nodes.keys() - first_nodes.keys())
+        ],
+        "removed_nodes": [
+            first_nodes[node_id]
+            for node_id in sorted(first_nodes.keys() - second_nodes.keys())
+        ],
+        "added_edges": [
+            second_edges[edge]
+            for edge in sorted(second_edges.keys() - first_edges.keys())
+        ],
+        "removed_edges": [
+            first_edges[edge]
+            for edge in sorted(first_edges.keys() - second_edges.keys())
+        ],
+    }
