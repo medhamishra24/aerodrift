@@ -226,3 +226,39 @@ def compare_topology_snapshots(
             for edge in sorted(first_edges.keys() - second_edges.keys())
         ],
     }
+
+
+def summarize_topology_diff(
+    first_snapshot_id: str,
+    second_snapshot_id: str,
+) -> str:
+    """Return a concise human-readable summary of a snapshot diff."""
+    diff = compare_topology_snapshots(first_snapshot_id, second_snapshot_id)
+    if diff is None:
+        return "Topology diff unavailable: one or both snapshots were not found."
+
+    added_nodes = diff["added_nodes"]
+    removed_nodes = diff["removed_nodes"]
+    added_edges = diff["added_edges"]
+    removed_edges = diff["removed_edges"]
+    if not any((added_nodes, removed_nodes, added_edges, removed_edges)):
+        return (
+            f"No topology changes between snapshots {first_snapshot_id} "
+            f"and {second_snapshot_id}."
+        )
+
+    def format_nodes(nodes: list[dict[str, object]]) -> str:
+        return ", ".join(str(node["id"]) for node in nodes) or "none"
+
+    def format_edges(edges: list[dict[str, object]]) -> str:
+        return ", ".join(
+            f"{edge['source']} -> {edge['target']}" for edge in edges
+        ) or "none"
+
+    return (
+        f"Topology changes from {first_snapshot_id} to {second_snapshot_id}: "
+        f"added nodes ({len(added_nodes)}): {format_nodes(added_nodes)}; "
+        f"removed nodes ({len(removed_nodes)}): {format_nodes(removed_nodes)}; "
+        f"added edges ({len(added_edges)}): {format_edges(added_edges)}; "
+        f"removed edges ({len(removed_edges)}): {format_edges(removed_edges)}."
+    )
