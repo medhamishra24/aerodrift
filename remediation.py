@@ -491,6 +491,29 @@ def format_remediation_audit_summary(summary: RemediationAuditSummary) -> str:
     return report
 
 
+def format_remediation_workflow_summary(
+    audit_record: RemediationAuditRecord,
+) -> str:
+    """Format the complete validation, execution, and outcome flow."""
+    target = "unavailable"
+    if audit_record.security_group_id and audit_record.action_metadata:
+        target = (
+            f"security group {audit_record.security_group_id}; "
+            f"{audit_record.action_metadata.protocol} ports "
+            f"{audit_record.action_metadata.port_range[0]}-"
+            f"{audit_record.action_metadata.port_range[1]} from "
+            f"{audit_record.action_metadata.source_cidr}"
+        )
+    return (
+        f"Remediation workflow: validation={audit_record.validation_status} "
+        "-> controlled mock execution="
+        f"{audit_record.execution_status} -> final outcome="
+        f"{audit_record.final_result}; attempt ID={audit_record.attempt_id}; "
+        f"timestamp={audit_record.execution_timestamp or audit_record.timestamp}; "
+        f"targeted rule={target}."
+    )
+
+
 def summarize_remediation_audits(
     audit_records: Iterable[RemediationAuditRecord],
 ) -> RemediationAuditSummary:
