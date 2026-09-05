@@ -438,6 +438,7 @@ class RemediationAuditRecord:
     final_result: Literal["SUCCESS", "FAILED", "BLOCKED"]
     action_metadata: RemediationActionMetadata | None = None
     generated_code: str | None = None
+    safety_decision: Literal["SAFE", "BLOCKED", "INVALID"] = "INVALID"
 
 
 @dataclass(frozen=True)
@@ -451,6 +452,7 @@ class RemediationAuditSummary:
     validation_passed_count: int = 0
     validation_blocked_count: int = 0
     targeted_rule_details: tuple[str, ...] = ()
+    safety_decisions: tuple[str, ...] = ()
 
     @property
     def message(self) -> str:
@@ -476,6 +478,8 @@ def format_remediation_audit_summary(summary: RemediationAuditSummary) -> str:
     )
     report += "\nTargeted security-group rules:"
     report += "\n" + ("\n".join(summary.targeted_rule_details) or "None")
+    report += "\nSafety decisions:"
+    report += "\n" + (", ".join(summary.safety_decisions) or "None")
     return report
 
 
@@ -505,6 +509,7 @@ def summarize_remediation_audits(
             if record.security_group_id is not None
             and record.action_metadata is not None
         ),
+        safety_decisions=tuple(record.safety_decision for record in records),
     )
 
 
@@ -531,6 +536,7 @@ def _create_remediation_audit_record(
     final_result: Literal["SUCCESS", "FAILED", "BLOCKED"],
     action_metadata: RemediationActionMetadata | None,
     generated_code: str | None = None,
+    safety_decision: Literal["SAFE", "BLOCKED", "INVALID"] = "INVALID",
 ) -> RemediationAuditRecord:
     """Create the structured audit record shared by all workflow outcomes."""
     return RemediationAuditRecord(
@@ -541,6 +547,7 @@ def _create_remediation_audit_record(
         final_result=final_result,
         action_metadata=action_metadata,
         generated_code=generated_code,
+        safety_decision=safety_decision,
     )
 
 
@@ -584,6 +591,14 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
     timestamp = datetime.now(timezone.utc).isoformat()
     is_valid, validation_message = validate_remediation_code(source)
     if not is_valid:
+        safety_decision: Literal["SAFE", "BLOCKED", "INVALID"] = "BLOCKED"
+        if not isinstance(source, str) or not source.strip():
+            safety_decision = "INVALID"
+        else:
+            try:
+                ast.parse(source, mode="exec")
+            except (SyntaxError, TypeError):
+                safety_decision = "INVALID"
         audit_record = _create_remediation_audit_record(
             timestamp=timestamp,
             security_group_id=None,
@@ -591,6 +606,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
             execution_status="not attempted",
             final_result="BLOCKED",
             action_metadata=None,
+            safety_decision=safety_decision,
         )
         _log_remediation_audit_event("BLOCKED", reason=validation_message)
         logger.warning("Remediation audit: validation result=rejected; %s", validation_message)
@@ -669,6 +685,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         final_result=final_status,
         action_metadata=action_metadata,
         generated_code=generated_code,
+        safety_decision="SAFE",
     )
     logger.info("Remediation audit: execution result=%s", final_status)
     logger.info("Remediation audit: final status=%s", final_status)
