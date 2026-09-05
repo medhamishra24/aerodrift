@@ -45,6 +45,42 @@ only against the local EC2 mock, and stores the scan result. A PDF is generated
 only for detected drift; SAFE/no-drift findings do not execute remediation or
 create an incident report.
 
+### SAFE and UNSAFE outcomes
+
+- **SAFE / NO DRIFT:** the restricted topology has no Internet-to-database
+  path. The dashboard reports SAFE, no remediation is executed, and no
+  incident PDF is generated.
+- **UNSAFE / DRIFT DETECTED:** the public path is present. The dashboard shows
+  the affected path and rule, remediation is generated and AST-validated, the
+  allowlisted action is executed against the local mock, and an incident PDF is
+  written.
+
+### Controlled remediation safety model
+
+Remediation source is generated from validated input and checked against an
+allowlisted AST shape. Only the expected `boto3` EC2 client construction and
+security-group ingress revocation are accepted. Execution uses an in-process
+local mock client with a restricted import, so no generated code can make a
+real AWS call. Audit records retain validation, execution, safety, lifecycle,
+timestamp, and attempt-correlation fields.
+
+### Historical snapshots and diffs
+
+After graph construction, each scan stores exactly one serialized snapshot in
+`topology_snapshots` with a unique ID, UTC timestamp, nodes, and directed edges.
+The workflow compares the latest snapshot with the previous one and reports
+`NO HISTORY`, `NO TOPOLOGY CHANGE`, or the added and removed nodes and edges.
+The optional timestamp CLI compares two saved snapshots by exact timestamp.
+
+### PDF incident reports
+
+For detected drift, `incident_report.py` creates
+`data/aerodrift_incident_report.pdf` locally with ReportLab. The report includes
+the report timestamp, affected security group, unsafe rule, Internet-to-database
+path, generated remediation action, AST validation result, controlled execution
+result, and final remediation status. The PDF is a generated runtime artifact
+and is excluded from version control.
+
 Run the project with:
 
 ```bash
@@ -312,12 +348,22 @@ python main.py --compare-timestamps "FIRST_TIMESTAMP" "SECOND_TIMESTAMP"
 python -m py_compile main.py database.py dashboard.py remediation.py incident_report.py
 ```
 
-The normal run completed with the expected mock `DRIFT DETECTED` path, saved a
-five-node/four-edge topology snapshot, displayed the historical comparison,
-executed remediation only through the local mock, and generated a valid PDF.
-The restricted topology check remained `NO DRIFT`; no AWS credentials or calls
-were used. Automated pytest discovery requires pytest to be installed
-separately in the active environment.
+Final checklist:
+
+- [x] Mock resources build a five-node/four-edge NetworkX topology.
+- [x] UNSAFE drift detection identifies the Internet-to-private-DB path.
+- [x] SAFE/no-drift behavior is preserved for the restricted topology.
+- [x] AST remediation validation and controlled mock execution are exercised.
+- [x] One timestamped SQLite topology snapshot is saved per scan.
+- [x] Latest/previous and timestamp-selected topology diffs are reported.
+- [x] Rich dashboard output includes security and historical topology status.
+- [x] Detected drift generates a valid local PDF incident report.
+- [x] No AWS credentials, network calls, or real cloud mutations are used.
+
+The normal run completed with the expected mock `DRIFT DETECTED` path and
+generated a valid PDF. Compilation and editor diagnostics passed. Automated
+pytest discovery was attempted but pytest is not installed in the active
+environment.
 
 ## Project Screenshots
 

@@ -1,5 +1,6 @@
 # Python cache and generated test artifacts
 __pycache__/
+*.pyc
 *.py[cod]
 *.pyo
 .pytest_cache/
@@ -13,9 +14,12 @@ ENV/
 .env.*
 
 # Local SQLite databases
+data/scan_results.db
 *.db
 *.sqlite
 *.sqlite3
+# Runtime-generated incident reports
+data/*.pdf
 
 # VS Code workspace settings
 .vscode/
