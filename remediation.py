@@ -437,6 +437,7 @@ class RemediationAuditRecord:
     execution_status: str
     final_result: Literal["SUCCESS", "FAILED", "BLOCKED"]
     action_metadata: RemediationActionMetadata | None = None
+    generated_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -529,6 +530,7 @@ def _create_remediation_audit_record(
     execution_status: str,
     final_result: Literal["SUCCESS", "FAILED", "BLOCKED"],
     action_metadata: RemediationActionMetadata | None,
+    generated_code: str | None = None,
 ) -> RemediationAuditRecord:
     """Create the structured audit record shared by all workflow outcomes."""
     return RemediationAuditRecord(
@@ -538,6 +540,7 @@ def _create_remediation_audit_record(
         execution_status=execution_status,
         final_result=final_result,
         action_metadata=action_metadata,
+        generated_code=generated_code,
     )
 
 
@@ -623,6 +626,14 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         port_range=(permission["FromPort"], permission["ToPort"]),
         source_cidr=permission["IpRanges"][0]["CidrIp"],
     )
+    generated_code = (
+        "boto3.client('ec2').revoke_security_group_ingress("
+        f"GroupId={security_group_id!r}, "
+        f"IpPermissions=[{{'IpProtocol': {permission['IpProtocol']!r}, "
+        f"'FromPort': {permission['FromPort']!r}, "
+        f"'ToPort': {permission['ToPort']!r}, "
+        f"'IpRanges': [{{'CidrIp': {permission['IpRanges'][0]['CidrIp']!r}}}]}}])"
+    )
     logger.info("Remediation audit: validation result=passed")
     execution_result = execute_remediation_code(source)
     final_status = "SUCCESS" if execution_result.success else "FAILED"
@@ -657,6 +668,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         execution_status=final_status,
         final_result=final_status,
         action_metadata=action_metadata,
+        generated_code=generated_code,
     )
     logger.info("Remediation audit: execution result=%s", final_status)
     logger.info("Remediation audit: final status=%s", final_status)
