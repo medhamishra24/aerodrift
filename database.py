@@ -189,6 +189,56 @@ def export_topology_snapshot(snapshot_id: str) -> dict[str, object]:
     }
 
 
+def validate_topology_snapshot(snapshot_id: str) -> dict[str, object]:
+    """Validate the stored node and edge structure for one snapshot."""
+    try:
+        snapshot = export_topology_snapshot(snapshot_id)
+    except (KeyError, TypeError, json.JSONDecodeError) as error:
+        return {
+            "valid": False,
+            "snapshot_id": snapshot_id,
+            "errors": [f"Unable to read snapshot structure: {error}"],
+            "message": "Topology snapshot structure is invalid.",
+        }
+
+    errors: list[str] = []
+    if snapshot["snapshot_id"] is None:
+        errors.append("Snapshot was not found.")
+
+    nodes = snapshot["nodes"]
+    if not isinstance(nodes, list):
+        errors.append("Nodes must be a list.")
+    else:
+        for index, node in enumerate(nodes):
+            if not isinstance(node, dict) or not node.get("id"):
+                errors.append(f"Node at index {index} must include an id.")
+
+    edges = snapshot["edges"]
+    if not isinstance(edges, list):
+        errors.append("Edges must be a list.")
+    else:
+        for index, edge in enumerate(edges):
+            if (
+                not isinstance(edge, dict)
+                or not edge.get("source")
+                or not edge.get("target")
+            ):
+                errors.append(
+                    f"Edge at index {index} must include source and target."
+                )
+
+    return {
+        "valid": not errors,
+        "snapshot_id": snapshot["snapshot_id"],
+        "errors": errors,
+        "message": (
+            "Topology snapshot structure is valid."
+            if not errors
+            else "Topology snapshot structure is invalid."
+        ),
+    }
+
+
 def list_topology_snapshots(limit: int = 10) -> list[dict[str, object]]:
     """Return saved topology snapshots in chronological order."""
     if limit <= 0:
