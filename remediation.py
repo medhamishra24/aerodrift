@@ -442,6 +442,7 @@ class RemediationAuditRecord:
     safety_decision: Literal["SAFE", "BLOCKED", "INVALID"] = "INVALID"
     execution_timestamp: str | None = None
     attempt_id: str = ""
+    lifecycle_stage: Literal["VALIDATED", "EXECUTED", "COMPLETED"] = "VALIDATED"
 
 
 @dataclass(frozen=True)
@@ -542,6 +543,7 @@ def _create_remediation_audit_record(
     generated_code: str | None = None,
     safety_decision: Literal["SAFE", "BLOCKED", "INVALID"] = "INVALID",
     execution_timestamp: str | None = None,
+    lifecycle_stage: Literal["VALIDATED", "EXECUTED", "COMPLETED"] = "VALIDATED",
 ) -> RemediationAuditRecord:
     """Create the structured audit record shared by all workflow outcomes."""
     return RemediationAuditRecord(
@@ -555,6 +557,7 @@ def _create_remediation_audit_record(
         generated_code=generated_code,
         safety_decision=safety_decision,
         execution_timestamp=execution_timestamp,
+        lifecycle_stage=lifecycle_stage,
     )
 
 
@@ -716,6 +719,7 @@ def run_remediation_workflow(source: str) -> RemediationWorkflowResult:
         generated_code=generated_code,
         safety_decision="SAFE",
         execution_timestamp=timestamp,
+        lifecycle_stage=("COMPLETED" if execution_result.success else "EXECUTED"),
     )
     logger.info(
         "Remediation audit: attempt_id=%s; execution result=%s",
