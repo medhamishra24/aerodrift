@@ -34,6 +34,7 @@ INSERT_SNAPSHOT_SQL: Final[str] = (
 DELETE_SNAPSHOT_SQL: Final[str] = (
     "DELETE FROM topology_snapshots WHERE snapshot_id = ?"
 )
+DELETE_ALL_SNAPSHOTS_SQL: Final[str] = "DELETE FROM topology_snapshots"
 SELECT_SNAPSHOT_BY_ID_SQL: Final[str] = (
     "SELECT snapshot_id, snapshot_time, topology_data "
     "FROM topology_snapshots WHERE snapshot_id = ?"
@@ -170,6 +171,38 @@ def delete_topology_snapshot(snapshot_id: str) -> dict[str, object]:
         "snapshot_id": snapshot_id,
         "status": "DELETED",
         "message": "Topology snapshot deleted.",
+    }
+
+
+def clear_topology_snapshots(confirm: bool = False) -> dict[str, object]:
+    """Clear all topology snapshots only with explicit confirmation."""
+    if confirm is not True:
+        return {
+            "cleared": False,
+            "deleted_count": 0,
+            "status": "CONFIRMATION_REQUIRED",
+            "message": "No snapshots were cleared; confirm=True is required.",
+        }
+
+    initialize_database()
+    try:
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            with connection:
+                cursor = connection.execute(DELETE_ALL_SNAPSHOTS_SQL)
+    except sqlite3.Error as error:
+        message = f"Unable to clear topology snapshots from SQLite database: {DATABASE_PATH}"
+        raise RuntimeError(message) from error
+
+    deleted_count = cursor.rowcount
+    return {
+        "cleared": deleted_count > 0,
+        "deleted_count": deleted_count,
+        "status": "CLEARED" if deleted_count > 0 else "NOTHING_TO_CLEAR",
+        "message": (
+            f"Cleared {deleted_count} topology snapshot(s)."
+            if deleted_count > 0
+            else "No topology snapshots were available to clear."
+        ),
     }
 
 
