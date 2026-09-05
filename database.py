@@ -165,6 +165,30 @@ def get_topology_snapshot(
     }
 
 
+def export_topology_snapshot(snapshot_id: str) -> dict[str, object]:
+    """Return a clean dictionary representation of one topology snapshot."""
+    empty_snapshot = {
+        "snapshot_id": None,
+        "timestamp": None,
+        "nodes": [],
+        "edges": [],
+    }
+    if not isinstance(snapshot_id, str) or not snapshot_id.strip():
+        return empty_snapshot
+
+    snapshot = get_topology_snapshot(snapshot_id=snapshot_id)
+    if snapshot is None:
+        return empty_snapshot
+
+    topology = snapshot["topology"]
+    return {
+        "snapshot_id": snapshot["snapshot_id"],
+        "timestamp": snapshot["timestamp"],
+        "nodes": topology["nodes"],
+        "edges": topology["edges"],
+    }
+
+
 def list_topology_snapshots(limit: int = 10) -> list[dict[str, object]]:
     """Return saved topology snapshots in chronological order."""
     if limit <= 0:
