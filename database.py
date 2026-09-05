@@ -45,6 +45,11 @@ SELECT_RECENT_SNAPSHOTS_SQL: Final[str] = (
     "FROM topology_snapshots "
     "ORDER BY snapshot_time ASC, rowid ASC LIMIT ?"
 )
+SELECT_LATEST_SNAPSHOT_SQL: Final[str] = (
+    "SELECT snapshot_id, snapshot_time, topology_data "
+    "FROM topology_snapshots "
+    "ORDER BY snapshot_time DESC, rowid DESC LIMIT 1"
+)
 
 
 def initialize_database() -> None:
@@ -181,6 +186,25 @@ def list_topology_snapshots(limit: int = 10) -> list[dict[str, object]]:
         }
         for row in rows
     ]
+
+
+def get_latest_topology_snapshot() -> dict[str, object] | None:
+    """Return the most recently saved topology snapshot, if available."""
+    initialize_database()
+    try:
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            row = connection.execute(SELECT_LATEST_SNAPSHOT_SQL).fetchone()
+    except sqlite3.Error as error:
+        message = f"Unable to retrieve latest topology snapshot from SQLite database: {DATABASE_PATH}"
+        raise RuntimeError(message) from error
+
+    if row is None:
+        return None
+    return {
+        "snapshot_id": row[0],
+        "timestamp": row[1],
+        "topology": json.loads(row[2]),
+    }
 
 
 def compare_topology_snapshots(
