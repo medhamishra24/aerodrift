@@ -122,7 +122,12 @@ def run_scan() -> None:
         )
     remediation_recommendations = generate_recommendations(drift_finding)
 
-    display_dashboard(cloud_topology, drift_finding, remediation_recommendations)
+    display_dashboard(
+        cloud_topology,
+        drift_finding,
+        remediation_recommendations,
+        topology_diff,
+    )
     save_scan_result(drift_finding.status, remediation_recommendations)
     console.print("[bold green]Scan result saved to data/scan_results.db[/bold green]")
 
