@@ -40,6 +40,11 @@ SELECT_SNAPSHOT_BY_TIME_SQL: Final[str] = (
     "FROM topology_snapshots WHERE snapshot_time = ? "
     "ORDER BY snapshot_id DESC LIMIT 1"
 )
+SELECT_RECENT_SNAPSHOTS_SQL: Final[str] = (
+    "SELECT snapshot_id, snapshot_time, topology_data "
+    "FROM topology_snapshots "
+    "ORDER BY snapshot_time ASC, rowid ASC LIMIT ?"
+)
 
 
 def initialize_database() -> None:
@@ -150,3 +155,29 @@ def get_topology_snapshot(
         "timestamp": row[1],
         "topology": json.loads(row[2]),
     }
+
+
+def list_topology_snapshots(limit: int = 10) -> list[dict[str, object]]:
+    """Return saved topology snapshots in chronological order."""
+    if limit <= 0:
+        return []
+
+    initialize_database()
+    try:
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            rows = connection.execute(
+                SELECT_RECENT_SNAPSHOTS_SQL,
+                (limit,),
+            ).fetchall()
+    except sqlite3.Error as error:
+        message = f"Unable to list topology snapshots from SQLite database: {DATABASE_PATH}"
+        raise RuntimeError(message) from error
+
+    return [
+        {
+            "snapshot_id": row[0],
+            "timestamp": row[1],
+            "topology": json.loads(row[2]),
+        }
+        for row in rows
+    ]
