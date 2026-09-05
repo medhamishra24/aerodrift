@@ -139,36 +139,56 @@ def display_dashboard(
     topology_diff = topology_diff or get_latest_topology_diff()
     history_status = topology_diff["status"]
     if history_status == "NO HISTORY":
-        history_content = Text("NO HISTORY", style="bold yellow")
+        history_content = Text(
+            "Historical comparison: NO HISTORY",
+            style="bold yellow",
+        )
     elif history_status == "NO CHANGE":
-        history_content = Text("NO TOPOLOGY CHANGE", style="bold green")
+        history_content = Text(
+            "Historical comparison: NO TOPOLOGY CHANGE",
+            style="bold green",
+        )
     else:
         history_table = Table(box=box.SIMPLE)
         history_table.add_column("Change", style="bold")
         history_table.add_column("Resources")
         history_table.add_row(
-            "Added nodes",
-            ", ".join(str(node["id"]) for node in topology_diff["added_nodes"]) or "none",
+            Text("Added nodes", style="bold green"),
+            Text(
+                ", ".join(str(node["id"]) for node in topology_diff["added_nodes"])
+                or "none",
+                style="green",
+            ),
         )
         history_table.add_row(
-            "Removed nodes",
-            ", ".join(str(node["id"]) for node in topology_diff["removed_nodes"]) or "none",
+            Text("Removed nodes", style="bold red"),
+            Text(
+                ", ".join(str(node["id"]) for node in topology_diff["removed_nodes"])
+                or "none",
+                style="red",
+            ),
         )
         history_table.add_row(
-            "Added edges",
-            ", ".join(
-                f"{edge['source']} -> {edge['target']}"
-                for edge in topology_diff["added_edges"]
-            )
-            or "none",
+            Text("Added edges", style="bold green"),
+            Text(
+                ", ".join(
+                    f"{edge['source']} -> {edge['target']}"
+                    for edge in topology_diff["added_edges"]
+                )
+                or "none",
+                style="green",
+            ),
         )
         history_table.add_row(
-            "Removed edges",
-            ", ".join(
-                f"{edge['source']} -> {edge['target']}"
-                for edge in topology_diff["removed_edges"]
-            )
-            or "none",
+            Text("Removed edges", style="bold red"),
+            Text(
+                ", ".join(
+                    f"{edge['source']} -> {edge['target']}"
+                    for edge in topology_diff["removed_edges"]
+                )
+                or "none",
+                style="red",
+            ),
         )
         history_content = history_table
     cli_console.print(
