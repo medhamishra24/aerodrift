@@ -449,6 +449,7 @@ class RemediationAuditSummary:
     blocked_count: int
     validation_passed_count: int = 0
     validation_blocked_count: int = 0
+    targeted_rule_details: tuple[str, ...] = ()
 
     @property
     def message(self) -> str:
@@ -464,7 +465,7 @@ class RemediationAuditSummary:
 
 def format_remediation_audit_summary(summary: RemediationAuditSummary) -> str:
     """Format remediation outcome counts as a compact audit report."""
-    return (
+    report = (
         f"Attempts: {summary.total_attempts} | "
         f"AST validation passed: {summary.validation_passed_count} | "
         f"AST validation blocked: {summary.validation_blocked_count} | "
@@ -472,6 +473,9 @@ def format_remediation_audit_summary(summary: RemediationAuditSummary) -> str:
         f"FAILED: {summary.failed_count} | "
         f"BLOCKED: {summary.blocked_count}"
     )
+    report += "\nTargeted security-group rules:"
+    report += "\n" + ("\n".join(summary.targeted_rule_details) or "None")
+    return report
 
 
 def summarize_remediation_audits(
@@ -489,6 +493,16 @@ def summarize_remediation_audits(
         ),
         validation_blocked_count=sum(
             record.validation_status == "rejected" for record in records
+        ),
+        targeted_rule_details=tuple(
+            f"Security group ID: {record.security_group_id}; "
+            f"protocol: {record.action_metadata.protocol}; "
+            f"port range: {record.action_metadata.port_range[0]}-"
+            f"{record.action_metadata.port_range[1]}; "
+            f"CIDR: {record.action_metadata.source_cidr}"
+            for record in records
+            if record.security_group_id is not None
+            and record.action_metadata is not None
         ),
     )
 
