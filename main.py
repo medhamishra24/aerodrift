@@ -17,10 +17,12 @@ from database import (
 )
 from drift_detector import detect_security_drift
 from graph_engine import apply_mock_security_group_drift, build_topology
+from incident_report import generate_incident_report
 from remediation import (
     RemediationInput,
     generate_recommendations,
     generate_remediation_code,
+    run_remediation_workflow,
     validate_remediation_code,
 )
 
@@ -115,6 +117,15 @@ def run_scan() -> None:
             )
         else:
             console.print(f"[bold red]{remediation_message}[/bold red]")
+        remediation_result = run_remediation_workflow(remediation_source)
+        report_path = generate_incident_report(
+            cloud_topology,
+            drift_finding,
+            remediation_result,
+        )
+        console.print(
+            f"[bold green]Incident PDF report generated: {report_path}[/bold green]"
+        )
     else:
         console.print("[bold green]Audit status: SAFE[/bold green]")
         console.print(
