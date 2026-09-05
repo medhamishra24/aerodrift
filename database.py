@@ -31,6 +31,15 @@ INSERT_SNAPSHOT_SQL: Final[str] = (
     "INSERT INTO topology_snapshots "
     "(snapshot_id, snapshot_time, topology_data) VALUES (?, ?, ?)"
 )
+SELECT_SNAPSHOT_BY_ID_SQL: Final[str] = (
+    "SELECT snapshot_id, snapshot_time, topology_data "
+    "FROM topology_snapshots WHERE snapshot_id = ?"
+)
+SELECT_SNAPSHOT_BY_TIME_SQL: Final[str] = (
+    "SELECT snapshot_id, snapshot_time, topology_data "
+    "FROM topology_snapshots WHERE snapshot_time = ? "
+    "ORDER BY snapshot_id DESC LIMIT 1"
+)
 
 
 def initialize_database() -> None:
@@ -112,3 +121,32 @@ def save_topology_snapshot(topology: object) -> str:
         message = f"Unable to save topology snapshot to SQLite database: {DATABASE_PATH}"
         raise RuntimeError(message) from error
     return snapshot_id
+
+
+def get_topology_snapshot(
+    snapshot_id: str | None = None,
+    timestamp: str | None = None,
+) -> dict[str, object] | None:
+    """Return one saved topology snapshot by ID or exact timestamp."""
+    if snapshot_id is not None and timestamp is not None:
+        raise ValueError("Provide either snapshot_id or timestamp, not both")
+    if snapshot_id is None and timestamp is None:
+        return None
+
+    initialize_database()
+    query = SELECT_SNAPSHOT_BY_ID_SQL if snapshot_id is not None else SELECT_SNAPSHOT_BY_TIME_SQL
+    selector = snapshot_id if snapshot_id is not None else timestamp
+    try:
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            row = connection.execute(query, (selector,)).fetchone()
+    except sqlite3.Error as error:
+        message = f"Unable to retrieve topology snapshot from SQLite database: {DATABASE_PATH}"
+        raise RuntimeError(message) from error
+
+    if row is None:
+        return None
+    return {
+        "snapshot_id": row[0],
+        "timestamp": row[1],
+        "topology": json.loads(row[2]),
+    }
