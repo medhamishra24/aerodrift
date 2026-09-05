@@ -525,7 +525,7 @@ def compare_topology_snapshots(
 
 def get_latest_topology_diff() -> dict[str, object]:
     """Return the diff between the latest and previous snapshots."""
-    snapshots = list_topology_snapshots(limit=2)
+    snapshots = list_topology_snapshots(limit=count_topology_snapshots())[-2:]
     if len(snapshots) < 2:
         return {
             "status": "NO HISTORY",

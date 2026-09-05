@@ -6,7 +6,12 @@ from rich.console import Console
 
 from aws_data import load_mock_resources
 from dashboard import display_dashboard
-from database import save_scan_result, save_topology_snapshot
+from database import (
+    get_latest_topology_diff,
+    save_scan_result,
+    save_topology_snapshot,
+    summarize_topology_diff,
+)
 from drift_detector import detect_security_drift
 from graph_engine import apply_mock_security_group_drift, build_topology
 from remediation import (
@@ -30,6 +35,16 @@ def run_scan() -> None:
     console.print(
         f"[bold green]Topology snapshot saved: {snapshot_id}[/bold green]"
     )
+    topology_diff = get_latest_topology_diff()
+    if topology_diff["status"] == "NO HISTORY":
+        console.print("[bold yellow]Historical topology comparison: NO HISTORY[/bold yellow]")
+    elif topology_diff["status"] == "NO CHANGE":
+        console.print("[bold green]Historical topology comparison: NO TOPOLOGY CHANGE[/bold green]")
+    else:
+        console.print(
+            "[bold yellow]Historical topology comparison: "
+            f"{summarize_topology_diff(topology_diff['previous_snapshot_id'], topology_diff['latest_snapshot_id'])}[/bold yellow]"
+        )
 
     console.print("[bold cyan]Testing mock security-group drift...[/bold cyan]")
     cloud_topology.remove_edge("sg-public", "web-server")
