@@ -31,6 +31,9 @@ INSERT_SNAPSHOT_SQL: Final[str] = (
     "INSERT INTO topology_snapshots "
     "(snapshot_id, snapshot_time, topology_data) VALUES (?, ?, ?)"
 )
+DELETE_SNAPSHOT_SQL: Final[str] = (
+    "DELETE FROM topology_snapshots WHERE snapshot_id = ?"
+)
 SELECT_SNAPSHOT_BY_ID_SQL: Final[str] = (
     "SELECT snapshot_id, snapshot_time, topology_data "
     "FROM topology_snapshots WHERE snapshot_id = ?"
@@ -134,6 +137,40 @@ def save_topology_snapshot(topology: object) -> str:
         message = f"Unable to save topology snapshot to SQLite database: {DATABASE_PATH}"
         raise RuntimeError(message) from error
     return snapshot_id
+
+
+def delete_topology_snapshot(snapshot_id: str) -> dict[str, object]:
+    """Delete one topology snapshot and return a clear operation result."""
+    if not isinstance(snapshot_id, str) or not snapshot_id.strip():
+        return {
+            "deleted": False,
+            "snapshot_id": snapshot_id,
+            "status": "INVALID",
+            "message": "Snapshot ID must be a non-empty string.",
+        }
+
+    initialize_database()
+    try:
+        with closing(sqlite3.connect(DATABASE_PATH)) as connection:
+            with connection:
+                cursor = connection.execute(DELETE_SNAPSHOT_SQL, (snapshot_id,))
+    except sqlite3.Error as error:
+        message = f"Unable to delete topology snapshot from SQLite database: {DATABASE_PATH}"
+        raise RuntimeError(message) from error
+
+    if cursor.rowcount == 0:
+        return {
+            "deleted": False,
+            "snapshot_id": snapshot_id,
+            "status": "NOT_FOUND",
+            "message": "Topology snapshot was not found.",
+        }
+    return {
+        "deleted": True,
+        "snapshot_id": snapshot_id,
+        "status": "DELETED",
+        "message": "Topology snapshot deleted.",
+    }
 
 
 def get_topology_snapshot(
