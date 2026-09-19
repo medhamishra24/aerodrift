@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#09111f">
+  <title>AeroDrift | CloudOps</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <script src="/static/js/dashboard.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/dashboard" aria-label="AeroDrift dashboard home">
+        <span class="brand-mark" aria-hidden="true">AD</span>
+        <span>
+          <strong>AeroDrift</strong>
+          <small>Agentic Cloud Topology &amp; Remediation</small>
+        </span>
+      </a>
+      <div class="topbar-actions">
+        <span class="connection-state"><i class="status-dot"></i><span id="connection-label">API ready</span></span>
+        <button class="scan-button" id="scan-button" type="button">
+          <span class="button-icon" aria-hidden="true">↻</span>
+          <span>Refresh scan</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="intro-row" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">SECURITY OBSERVABILITY / LOCAL MOCK ENVIRONMENT</p>
+          <h1 id="page-title">Cloud posture, in one clear view.</h1>
+          <p class="intro-copy">Trace exposure, understand the route, and review the controlled remediation outcome.</p>
+        </div>
+        <div class="last-updated" id="last-updated">Waiting for first scan</div>
+      </section>
+
+      <div class="feedback" id="feedback" role="status" aria-live="polite">
+        <span class="loader" aria-hidden="true"></span>
+        <span>Loading AeroDrift telemetry...</span>
+      </div>
+
+      <section class="metric-grid" aria-label="Scan overview">
+        <article class="metric-card accent-cyan">
+          <div class="metric-label">Total nodes <span class="metric-symbol">◈</span></div>
+          <strong class="metric-value" id="node-count">—</strong>
+          <span class="metric-note">Resources in latest topology</span>
+        </article>
+        <article class="metric-card accent-blue">
+          <div class="metric-label">Total edges <span class="metric-symbol">↗</span></div>
+          <strong class="metric-value" id="edge-count">—</strong>
+          <span class="metric-note">Directed relationships mapped</span>
+        </article>
+        <article class="metric-card accent-red">
+          <div class="metric-label">Drift status <span class="metric-symbol">!</span></div>
+          <strong class="metric-value status-value" id="drift-status">—</strong>
+          <span class="metric-note" id="drift-note">Awaiting scan result</span>
+        </article>
+        <article class="metric-card accent-amber">
+          <div class="metric-label">Risk level <span class="metric-symbol">△</span></div>
+          <strong class="metric-value" id="risk-level">—</strong>
+          <span class="metric-note">Based on detected reachability</span>
+        </article>
+        <article class="metric-card accent-violet">
+          <div class="metric-label">Affected resources <span class="metric-symbol">⌁</span></div>
+          <strong class="metric-value" id="affected-count">—</strong>
+          <span class="metric-note">Resources on unsafe path</span>
+        </article>
+        <article class="metric-card accent-green">
+          <div class="metric-label">Latest scan <span class="metric-symbol">◷</span></div>
+          <strong class="metric-value metric-time" id="scan-time">—</strong>
+          <span class="metric-note">UTC service timestamp</span>
+        </article>
+      </section>
+
+      <section class="section-grid drift-grid" aria-label="Drift detection">
+        <article class="panel drift-panel" id="drift-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">01 / DRIFT DETECTION</p>
+              <h2>Internet-to-Database exposure</h2>
+            </div>
+            <span class="severity-badge" id="severity-badge">Scanning</span>
+          </div>
+          <div class="exposure-state">
+            <span class="exposure-icon" id="exposure-icon">?</span>
+            <div>
+              <strong id="exposure-status">Awaiting scan</strong>
+              <span id="exposure-message">The latest finding will appear here.</span>
+            </div>
+          </div>
+          <div class="detail-list">
+            <div><span>Reachability</span><strong id="reachability">—</strong></div>
+            <div><span>Affected security group</span><strong id="security-group">—</strong></div>
+            <div><span>Unsafe CIDR</span><strong class="mono" id="unsafe-cidr">—</strong></div>
+          </div>
+        </article>
+
+        <article class="panel path-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">EXPOSURE PATH</p>
+              <h2>Detected route</h2>
+            </div>
+            <span class="path-count" id="path-count">0 hops</span>
+          </div>
+          <div class="path-flow" id="path-flow"><span class="empty-state">No path available.</span></div>
+          <div class="recommendations-block">
+            <div class="subheading">Recommendations</div>
+            <ol class="recommendations" id="recommendations"><li>Recommendations will appear after a scan.</li></ol>
+          </div>
+        </article>
+      </section>
+
+      <section class="section-grid topology-grid" aria-label="Current topology">
+        <article class="panel topology-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">02 / TOPOLOGY</p>
+              <h2>Current resource map</h2>
+            </div>
+            <span class="snapshot-label mono" id="snapshot-id">Snapshot —</span>
+          </div>
+          <div class="topology-map" id="topology-map"><span class="empty-state">Loading topology...</span></div>
+        </article>
+        <article class="panel node-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">RESOURCE INVENTORY</p>
+              <h2>Nodes</h2>
+            </div>
+          </div>
+          <div class="node-list" id="node-list"><span class="empty-state">Loading nodes...</span></div>
+        </article>
+      </section>
+
+      <section class="section-grid bottom-grid" aria-label="History and reports">
+        <article class="panel history-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">03 / HISTORY</p>
+              <h2>Topology changes</h2>
+            </div>
+            <span class="history-badge" id="history-status">—</span>
+          </div>
+          <div class="change-grid">
+            <div class="change-column added"><span>Added</span><strong id="added-count">0</strong><ul id="added-list"></ul></div>
+            <div class="change-column removed"><span>Removed</span><strong id="removed-count">0</strong><ul id="removed-list"></ul></div>
+          </div>
+          <div class="edge-diff" id="edge-diff">No topology edge changes reported.</div>
+        </article>
+        <article class="panel report-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">04 / REPORTS</p>
+              <h2>Incident report</h2>
+            </div>
+            <span class="report-badge" id="report-badge">—</span>
+          </div>
+          <div class="report-content">
+            <div class="report-icon" aria-hidden="true">PDF</div>
+            <div>
+              <strong id="report-title">Report status unavailable</strong>
+              <p id="report-path">Run a scan to check for a generated incident report.</p>
+            </div>
+          </div>
+        </article>
+      </section>
+      <section class="section-grid remediation-grid" aria-label="Controlled remediation">
+        <article class="panel remediation-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">05 / CONTROLLED REMEDIATION</p>
+              <h2>Agentic remediation outcome</h2>
+            </div>
+            <span class="remediation-badge" id="remediation-badge">—</span>
+          </div>
+
+          <div class="remediation-state">
+            <span class="remediation-icon" id="remediation-icon">?</span>
+            <div>
+              <strong id="remediation-status">Awaiting scan</strong>
+              <span id="remediation-message">
+                Remediation result will appear after the security scan.
+              </span>
+            </div>
+          </div>
+
+          <div class="detail-list remediation-details">
+            <div>
+              <span>Security group</span>
+              <strong class="mono" id="remediation-sg">—</strong>
+            </div>
+            <div>
+              <span>Operation</span>
+              <strong id="remediation-operation">—</strong>
+            </div>
+            <div>
+              <span>Protocol</span>
+              <strong id="remediation-protocol">—</strong>
+            </div>
+            <div>
+              <span>Port range</span>
+              <strong id="remediation-port">—</strong>
+            </div>
+            <div>
+              <span>Source CIDR</span>
+              <strong class="mono" id="remediation-cidr">—</strong>
+            </div>
+            <div>
+              <span>Safety decision</span>
+              <strong id="remediation-safety">—</strong>
+            </div>
+            <div>
+              <span>Lifecycle</span>
+              <strong id="remediation-lifecycle">—</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel code-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">GENERATED ACTION</p>
+              <h2>Validated remediation code</h2>
+            </div>
+          </div>
+
+          <pre class="remediation-code" id="remediation-code">No remediation code available.</pre>
+
+          <div class="audit-meta">
+            <span>Attempt ID</span>
+            <strong class="mono" id="remediation-attempt">—</strong>
+          </div>
+
+          <div class="audit-meta">
+            <span>Execution timestamp</span>
+            <strong class="mono" id="remediation-execution-time">—</strong>
+          </div>
+        </article>
+      </section>
+    </main>
+    <footer class="footer">AeroDrift <span>•</span> local analysis only <span>•</span> mock AWS resources</footer>
+  </div>
+</body>
+</html>
