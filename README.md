@@ -1,431 +1,369 @@
-# AeroDrift
+# AeroDrift — Agentic Cloud Topology & Remediation Graph
 
-A local Python application for cloud topology and remediation analysis. AeroDrift
-uses mock AWS resources, a directed NetworkX graph, a Rich terminal dashboard,
-SQLite topology history, and ReportLab incident reports. It never connects to
-AWS or changes cloud resources.
+AeroDrift is a local Python-based CloudOps security monitoring and remediation system. It uses mock AWS resources, a directed NetworkX topology graph, security-drift detection, AST-based remediation generation and validation, controlled local remediation execution, SQLite topology history, a FastAPI web API, a web dashboard, and ReportLab incident reports.
+
+AeroDrift is designed for demonstration and learning. It does not connect to AWS or make uncontrolled changes to real cloud resources.
+
+---
 
 ## Project Overview
 
-The prototype models this environment:
+The main security scenario modeled by AeroDrift is:
 
-`Internet -> Public Security Group -> Web Server -> Application Server -> Database`
+```text
+Internet
+   ↓
+Public Security Group
+   ↓
+Web Server
+   ↓
+Application Server
+   ↓
+Database
 
-The route is intentionally unsafe so the drift check has a repeatable result.
+The mock environment intentionally contains an unsafe Internet-to-Database route so that the drift detection and remediation workflow can be demonstrated consistently.
+
 No AWS account or credentials are required.
 
-## Features
+⸻
 
-- Mock AWS resource and relationship collection
-- Directed cloud topology graph using NetworkX
-- Internet-to-Database reachability detection
-- AST-generated and AST-validated remediation code
-- Controlled local mock remediation execution
-- Historical SQLite topology snapshots and timestamp comparison
-- Colored Rich CLI dashboard with drift history
-- Automated PDF incident reports for detected drift
-- Small modules suitable for learning and demonstration
+Key Features
 
-## Complete Workflow
+* Mock AWS resource and relationship collection
+* Directed cloud topology using NetworkX
+* Internet-to-Database reachability detection
+* Security drift and risk identification
+* Affected-resource identification
+* Security-group and unsafe CIDR details
+* AST-generated remediation code
+* AST validation using an allowlisted structure
+* Controlled local/mock remediation execution
+* Remediation audit lifecycle and execution status
+* SQLite historical topology snapshots
+* Latest/previous topology comparison
+* Timestamp-based topology comparison
+* Rich terminal dashboard
+* FastAPI JSON API
+* Browser-based CloudOps dashboard
+* Automated PDF incident reports
+* Local-only and mock AWS architecture
 
-Each scan follows this flow:
+[11:01 pm, 19/09/2026] MEDHA MISHRA: Complete Workflow
 
-```text
-Mock resources -> NetworkX topology -> drift detection
--> AST remediation generation -> AST safety validation
--> controlled local mock execution -> SQLite historical snapshot
--> latest/previous topology diff -> Rich dashboard -> PDF incident report
-```
+Each scan follows this workflow:
+[11:01 pm, 19/09/2026] MEDHA MISHRA: Mock AWS Resources
+        ↓
+NetworkX Topology
+        ↓
+Security Drift Detection
+        ↓
+Unsafe Path Identification
+        ↓
+AST Remediation Generation
+        ↓
+AST Safety Validation
+        ↓
+Controlled Local Execution
+        ↓
+Audit Result
+        ↓
+SQLite Historical Snapshot
+        ↓
+Topology Comparison
+        ↓
+FastAPI Dashboard
+        ↓
+PDF Incident Report
+[11:01 pm, 19/09/2026] MEDHA MISHRA: The default mock data creates:
+[11:01 pm, 19/09/2026] MEDHA MISHRA: Internet → Public Security Group → Web Server
+→ Application Server → Database
+[11:01 pm, 19/09/2026] MEDHA MISHRA: The scan stores the topology, detects the security drift, generates and validates the remediation action, executes it only against the local mock environment, records audit information, updates topology history, and generates an incident report for the detected drift.
+[11:02 pm, 19/09/2026] MEDHA MISHRA: Security Drift Detection
 
-The default mock data intentionally creates an
-`Internet -> Public Security Group -> Web Server -> Application Server -> Database`
-path. A scan records the constructed graph, exercises the restricted/no-drift
-check, restores mock drift, validates the allowlisted remediation AST, executes
-only against the local EC2 mock, and stores the scan result. A PDF is generated
-only for detected drift; SAFE/no-drift findings do not execute remediation or
-create an incident report.
+AeroDrift checks whether the public Internet can reach the private database through the modeled topology.
 
-### SAFE and UNSAFE outcomes
+Current mock result
 
-- **SAFE / NO DRIFT:** the restricted topology has no Internet-to-database
-  path. The dashboard reports SAFE, no remediation is executed, and no
-  incident PDF is generated.
-- **UNSAFE / DRIFT DETECTED:** the public path is present. The dashboard shows
-  the affected path and rule, remediation is generated and AST-validated, the
-  allowlisted action is executed against the local mock, and an incident PDF is
-  written.
+[11:02 pm, 19/09/2026] MEDHA MISHRA: Total nodes:             5
+Total edges:             4
+Internet → Database:     YES
+Drift status:            DRIFT DETECTED
+Risk level:              HIGH
+Unsafe CIDR:             0.0.0.0/0
+[11:02 pm, 19/09/2026] MEDHA MISHRA: Detected route:
+[11:02 pm, 19/09/2026] MEDHA MISHRA: Internet
+→ Public Security Group
+→ Web Server
+→ Application Server
+→ Database
+[11:02 pm, 19/09/2026] MEDHA MISHRA: The dashboard identifies the affected resources and displays the security-group rule responsible for the unsafe route.
+[11:02 pm, 19/09/2026] MEDHA MISHRA: Controlled Remediation
 
-### Controlled remediation safety model
+When drift is detected, AeroDrift creates a remediation action using validated input.
 
-Remediation source is generated from validated input and checked against an
-allowlisted AST shape. Only the expected `boto3` EC2 client construction and
-security-group ingress revocation are accepted. Execution uses an in-process
-local mock client with a restricted import, so no generated code can make a
-real AWS call. Audit records retain validation, execution, safety, lifecycle,
-timestamp, and attempt-correlation fields.
+The remediation workflow:
 
-### Historical snapshots and diffs
+1. Generates the remediation source programmatically.
+2. Validates the generated Python code using AST checks.
+3. Allows only the expected remediation structure.
+4. Executes the validated action against the local mock EC2 client.
+5. Records the validation and execution result.
+6. Stores audit metadata such as attempt ID, timestamp, lifecycle stage, and safety decision.
 
-After graph construction, each scan stores exactly one serialized snapshot in
-`topology_snapshots` with a unique ID, UTC timestamp, nodes, and directed edges.
-The workflow compares the latest snapshot with the previous one and reports
-`NO HISTORY`, `NO TOPOLOGY CHANGE`, or the added and removed nodes and edges.
-The optional timestamp CLI compares two saved snapshots by exact timestamp.
+The current mock demonstration uses a security-group ingress revocation action for the unsafe public rule.
+[11:02 pm, 19/09/2026] MEDHA MISHRA: Validation:        VALIDATED
+Execution:         COMPLETED
+Safety decision:   SAFE
+Final result:      SUCCESS
+[11:03 pm, 19/09/2026] MEDHA MISHRA: No real AWS resource is modified.
+[11:03 pm, 19/09/2026] MEDHA MISHRA: Web Dashboard
 
-### PDF incident reports
+AeroDrift includes a FastAPI-powered browser dashboard for viewing the current security posture.
 
-For detected drift, `incident_report.py` creates
-`data/aerodrift_incident_report.pdf` locally with ReportLab. The report includes
-the report timestamp, affected security group, unsafe rule, Internet-to-database
-path, generated remediation action, AST validation result, controlled execution
-result, and final remediation status. The PDF is a generated runtime artifact
-and is excluded from version control.
+The dashboard provides:
 
-Run the project with:
+* Total nodes
+* Total edges
+* Drift status
+* Risk level
+* Affected resources
+* Latest scan timestamp
+* Internet-to-Database exposure path
+* Affected security group
+* Unsafe CIDR
+* Remediation recommendations
+* Current topology and resource inventory
+* Historical topology changes
+* Controlled remediation outcome
+* Generated remediation code
+* Remediation audit information
+* Incident report status
 
-```bash
-python main.py
-```
+Dashboard API
 
-## Project Architecture
+The FastAPI layer provides:
+[11:03 pm, 19/09/2026] MEDHA MISHRA: /api/scan
+/api/topology
+/api/history
+/api/health
 
-AeroDrift uses a small pipeline in which each module has one responsibility:
+[11:03 pm, 19/09/2026] MEDHA MISHRA: The dashboard uses the real scan service and persisted topology data rather than hard-coded demonstration values.
+[11:03 pm, 19/09/2026] MEDHA MISHRA: Historical Topology
 
-```text
-Mock resources -> Graph -> Drift Detection -> Remediation -> History -> Dashboard/PDF
-  aws_data.py     graph_engine.py   drift_detector.py   remediation.py   database.py   dashboard.py/incident_report.py
-```
+AeroDrift stores topology snapshots in SQLite.
 
-`main.py` coordinates the complete flow.
+Each scan records:
 
-- **`aws_data.py`** defines `CloudResource` and supplies validated mock resources and relationships.
-- **`graph_engine.py`** builds a NetworkX directed graph from those resources and relationships.
-- **`drift_detector.py`** checks whether a directed path exists from `internet` to `database`.
-- **`remediation.py`** generates allowlisted remediation source, validates its AST, and executes it only against a local EC2 mock while recording audit status.
-- **`database.py`** stores scan results and timestamped topology snapshots, retrieves and compares history, and provides safe snapshot helpers.
-- **`dashboard.py`** displays graph metrics, historical changes, drift status, and recommendations with Rich.
-- **`incident_report.py`** creates a local ReportLab PDF from the existing finding, topology path, and remediation audit result.
+* Snapshot ID
+* UTC timestamp
+* Nodes
+* Directed edges
 
-The modules keep mock data, analysis, presentation, and storage separate.
+The system compares the latest snapshot with the previous snapshot and can report:
+[11:03 pm, 19/09/2026] MEDHA MISHRA: NO HISTORY
+NO TOPOLOGY CHANGE
+CHANGES DETECTED
+[11:03 pm, 19/09/2026] MEDHA MISHRA: Added and removed nodes and edges can be displayed through the CLI and web dashboard.
 
-## Technologies Used
+Timestamp-based comparison is also supported through the CLI.
+[11:04 pm, 19/09/2026] MEDHA MISHRA: Incident PDF Reports
 
-- Python 3.10+
-- NetworkX
-- Rich
-- ReportLab
-- SQLite (Python standard library)
+When security drift is detected, AeroDrift generates a local PDF incident report using ReportLab.
 
-## Installation and Setup
+The report includes information such as:
 
-Requirements: Python 3.10 or newer. No AWS account, credentials, or cloud configuration is needed.
+* Report timestamp
+* Affected security group
+* Unsafe security rule
+* Internet-to-Database path
+* Generated remediation action
+* AST validation result
+* Controlled execution result
+* Final remediation status
 
-Open a terminal in the project directory.
+The generated report is a local runtime artifact and is excluded from version control.
 
-Create a virtual environment:
+SAFE and UNSAFE Outcomes
 
-```bash
-python -m venv .venv
-```
+SAFE / NO DRIFT
 
-Windows PowerShell:
+When no Internet-to-Database path exists:
 
-```powershell
-.venv\Scripts\Activate.ps1
-```
+* The finding is marked SAFE.
+* No remediation is executed.
+* No incident PDF is generated.
 
-macOS/Linux:
+UNSAFE / DRIFT DETECTED
 
-```bash
-source .venv/bin/activate
-```
+When the unsafe public path exists:
 
-Install dependencies:
+* Drift is detected.
+* The Internet-to-Database path is displayed.
+* Affected resources are identified.
+* The remediation code is generated.
+* AST validation is performed.
+* Controlled mock execution is performed.
+* Audit information is recorded.
+* An incident PDF is generated.
 
-```bash
-python -m pip install -r requirements.txt
-```
+Technology Stack
 
-Verify the installation:
+* Python 3.10+
+* NetworkX
+* FastAPI
+* Uvicorn
+* Rich
+* SQLite
+* Python ast
+* ReportLab
+* HTML
+* CSS
+* JavaScript
+* Mock AWS/boto3-oriented architecture
 
-```bash
-python --version
-python -c "import networkx, rich, reportlab; print('AeroDrift dependencies are ready')"
-```
+Project Architecture:
 
-## Project Structure
+┌─────────────────────┐
+                    │   Mock AWS Data     │
+                    │    aws_data.py      │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │  NetworkX Topology  │
+                    │  graph_engine.py    │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │   Drift Detection   │
+                    │ drift_detector.py   │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │    Remediation      │
+                    │  remediation.py     │
+                    └──────────┬──────────┘
+                               ↓
+              ┌────────────────┴────────────────┐
+              ↓                                 ↓
+      ┌───────────────┐                 ┌───────────────┐
+      │    SQLite     │                 │ Incident PDF  │
+      │  database.py  │                 │incident_report│
+      └───────────────┘                 └───────────────┘
+              ↓
+      ┌────────────────────┐
+      │   FastAPI API      │
+      │ api.py / web_app.py│
+      └──────────┬─────────┘
+                 ↓
+      ┌────────────────────┐
+      │   Web Dashboard    │
+      │ HTML/CSS/JavaScript│
+      └────────────────────┘
 
-```text
+Project Structure:
+
 AeroDrift/
-├── main.py                 # Application entry point and scan coordinator
-├── aws_data.py             # Mock resources, relationships, and validation
-├── graph_engine.py         # NetworkX directed topology construction
-├── drift_detector.py       # Internet-to-Database reachability check
-├── remediation.py          # AST-safe remediation generation and mock execution
-├── database.py             # SQLite schema setup and scan persistence
-├── dashboard.py            # Rich CLI dashboard rendering
-├── incident_report.py      # Local ReportLab PDF incident reports
-├── requirements.txt        # Runtime Python dependencies
-├── README.md               # Project documentation
-├── CONTRIBUTING.md          # Contribution guidelines
-├── LICENSE                 # MIT license
-├── .gitignore              # Generated files and local settings to ignore
-├── data/                   # Created when the first scan runs
-│   ├── scan_results.db     # Local SQLite scan and topology history
-│   └── aerodrift_incident_report.pdf  # Generated drift report
-└── screenshots/            # Optional presentation screenshots
-    └── .gitkeep            # Keeps the directory in Git
-```
+│
+├── main.py
+├── aws_data.py
+├── graph_engine.py
+├── drift_detector.py
+├── remediation.py
+├── database.py
+├── dashboard.py
+├── incident_report.py
+├── scan_service.py
+├── api.py
+├── web_app.py
+│
+├── templates/
+│   └── dashboard.html
+│
+├── static/
+│   ├── css/
+│   │   └── dashboard.css
+│   └── js/
+│       └── dashboard.js
+│
+├── data/
+│   └── scan_results.db
+│
+├── screenshots/
+│
+├── requirements.txt
+├── README.md
+├── CONTRIBUTING.md
+├── LICENSE
+└── .gitignore
 
-`data/scan_results.db` and incident PDFs are created automatically at runtime
-and ignored by Git. Python cache directories and the virtual environment are
-also intentionally excluded from version control.
+Module Responsibilities
 
-## Usage Examples
+* aws_data.py — Defines mock cloud resources and relationships.
+* graph_engine.py — Builds the directed NetworkX topology.
+* drift_detector.py — Detects unsafe Internet-to-Database reachability.
+* remediation.py — Generates, validates, and controls remediation execution.
+* database.py — Handles SQLite scan and topology history.
+* dashboard.py — Provides Rich terminal dashboard output.
+* incident_report.py — Generates local PDF incident reports.
+* scan_service.py — Provides reusable scan orchestration for CLI and web consumers.
+* api.py — Provides the FastAPI JSON endpoints.
+* web_app.py — Serves the AeroDrift web dashboard.
+* dashboard.html — Dashboard structure.
+* dashboard.css — Dashboard styling.
+* dashboard.js — Dashboard API integration and rendering.
+* main.py — CLI entry point and project workflow coordination.
 
-### Run a topology scan
+Troubleshooting
 
-From the project root, after activating the virtual environment:
+Python Not Found
 
-```bash
-python main.py
-```
-
-Each run appends one scan result and one topology snapshot to
-`data/scan_results.db`, then compares the current snapshot with the previous
-available snapshot.
-
-### Compare saved snapshots by timestamp
-
-```bash
-python main.py --compare-timestamps "FIRST_TIMESTAMP" "SECOND_TIMESTAMP"
-```
-
-The command reports `NO HISTORY`, `NO TOPOLOGY CHANGE`, or the added and removed
-nodes and directed edges.
-
-### Confirm the latest saved result
-
-Use Python's built-in SQLite support to inspect the latest scan:
-
-```bash
-python -c "import sqlite3; connection = sqlite3.connect('data/scan_results.db'); print(connection.execute('SELECT scan_time, status FROM scan_results ORDER BY id DESC LIMIT 1').fetchone()); connection.close()"
-```
-
-Expected result format:
-
-```text
-('2026-08-23T12:00:00+00:00', 'DRIFT DETECTED')
-```
-
-The timestamp will reflect the time of your scan.
-
-## Troubleshooting
-
-### Python Not Found
-
-If the terminal reports that `python` is not recognized, Python may not be installed or may not be available on your `PATH`.
-
-- Install Python 3.10 or newer from [python.org](https://www.python.org/downloads/).
-- On Windows, enable **Add Python to PATH** during installation.
-- Close and reopen the terminal, then verify the installation:
-
-```bash
+If Python is not recognized:
 python --version
-```
+Install Python 3.10 or newer and ensure it is available on your PATH.
 
-On some macOS and Linux systems, use `python3` instead of `python` in the commands in this README.
+Module Import Errors
 
-### Module Import Errors
-
-If you see `ModuleNotFoundError` for `networkx`, `rich`, or `reportlab`, activate the project virtual environment and install the requirements again:
-
-```bash
+Activate the virtual environment and reinstall dependencies:
 python -m pip install -r requirements.txt
-```
+Port 8002 Already in Use
 
-If the error continues, confirm that `python` and `pip` point to the same environment:
+If the dashboard reports that port 8002 is already in use, stop the existing Uvicorn process or use another local port.
+Example:
+python -m uvicorn web_app:app --host 127.0.0.1 --port 8003
+Then open:
+http://127.0.0.1:8003/dashboard
+SQLite Issues
 
-```bash
-python -m pip --version
-python -c "import networkx, rich, reportlab; print('Dependencies imported successfully')"
-```
+The SQLite database is created locally when the application runs.
 
-Run `main.py` from the project root so Python can find the local AeroDrift modules.
+For a fresh local demonstration, stop the application and remove the local database:
+data/scan_results.db
+The application will recreate the required database structure on the next run.
 
-### SQLite Database Issues
+⸻
 
-If the application cannot create or write `data/scan_results.db`, check that:
+Future Improvements
 
-- You are running `python main.py` from the project directory.
-- The project directory is writable.
-- Another process is not holding the database file open.
-- The `data` path is not a file with the same name as the required directory.
+Possible future extensions include:
 
-AeroDrift creates the `data` directory and database table automatically. For a local demonstration, stop the application and remove `data/scan_results.db` to start with a fresh scan history; the next run recreates it.
+* Selectable safe and drifted topology scenarios
+* Topology diagram export
+* GraphML export
+* Scan-history filters
+* Unit and integration test coverage
+* Continuous integration
+* Optional read-only AWS inventory adapter
+* Recommendation confidence information
+* Human approval workflow before remediation
 
-### GitHub Push Issues
+⸻
 
-If Git reports that `origin` is missing, add the remote and try again:
+Project Screenshots
 
-```bash
-git push -u origin main
-```
+Project screenshots can be stored in the screenshots/ directory for documentation and presentation.
 
-If the remote URL is incorrect, update it in your Git client before pushing.
+⸻
 
-Confirm the remote and branch before pushing:
+License
 
-```bash
-git remote -v
-git branch --show-current
-```
-
-For authentication failures, use GitHub's supported authentication method, such as GitHub CLI or SSH. Do not place passwords, access tokens, or other secrets in the repository or command history.
-
-### Virtual Environment Issues
-
-If activation fails or dependencies appear to be missing, recreate the local environment.
-
-Windows PowerShell:
-
-```powershell
-deactivate
-Remove-Item -Recurse -Force .venv
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-```
-
-macOS/Linux:
-
-```bash
-deactivate
-rm -rf .venv
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-```
-
-If PowerShell blocks activation scripts, run this command as your normal user:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-
-## Frequently Asked Questions
-
-### Does AeroDrift connect to AWS?
-
-No. It uses mock data only and does not require an AWS account, credentials, or network access.
-
-### Why does the demo report drift?
-
-The mock topology intentionally includes a directed route from `internet` to `database`, so the finding is repeatable.
-
-### Can I change the simulated resources?
-
-Yes. Update the resources and relationships in `aws_data.py`. Keep resource IDs consistent with relationship endpoints so validation succeeds.
-
-### Does AeroDrift fix the detected issue?
-
-No cloud resource is modified. AeroDrift generates and validates an allowlisted
-action, then executes it only against the in-process local mock client.
-
-### Where is scan history stored?
-
-Each successful scan is appended to `data/scan_results.db` with its UTC
-timestamp, status, recommendations, and topology snapshot. Snapshot history is
-used for latest/timestamp comparison and is never sent to AWS.
-
-## Validation Results
-
-The final integration was checked with:
-
-```bash
-python main.py
-python main.py --compare-timestamps "FIRST_TIMESTAMP" "SECOND_TIMESTAMP"
-python -m py_compile main.py database.py dashboard.py remediation.py incident_report.py
-```
-
-Final checklist:
-
-- [x] Mock resources build a five-node/four-edge NetworkX topology.
-- [x] UNSAFE drift detection identifies the Internet-to-private-DB path.
-- [x] SAFE/no-drift behavior is preserved for the restricted topology.
-- [x] AST remediation validation and controlled mock execution are exercised.
-- [x] One timestamped SQLite topology snapshot is saved per scan.
-- [x] Latest/previous and timestamp-selected topology diffs are reported.
-- [x] Rich dashboard output includes security and historical topology status.
-- [x] Detected drift generates a valid local PDF incident report.
-- [x] No AWS credentials, network calls, or real cloud mutations are used.
-
-The normal run completed with the expected mock `DRIFT DETECTED` path and
-generated a valid PDF. Compilation and editor diagnostics passed. Automated
-pytest discovery was attempted but pytest is not installed in the active
-environment.
-
-## Project Screenshots
-
-### Dashboard Output
-
-[View the AeroDrift dashboard screenshot](screenshots/dashboard.output.png.jpeg)
-
-This screenshot shows the AeroDrift security scan, its drift detection result, the remediation recommendations, and the message confirming that the result was saved to SQLite.
-
-### GitHub Repository
-
-[View the AeroDrift GitHub repository screenshot](screenshots/gitHub_repository.png.jpeg)
-
-This screenshot demonstrates the project's GitHub repository and version-control history.
-
-## Sample Output
-
-```text
-Loading mock AWS resources...
-Building cloud topology graph...
-Checking for security drift...
-
-Topology Scan
-Total nodes                    5
-Total edges                    4
-Internet -> Database path      YES
-Drift status                   DRIFT DETECTED
-
-WARNING: Security Drift Detected - Internet can reach Database
-
-Remediation Recommendations
-1. Close the open security group to public inbound traffic.
-2. Restrict public access to approved IP ranges or trusted services.
-3. Remove the unnecessary Internet-to-Database route.
-
-Scan result saved to data/scan_results.db
-```
-
-## Future Improvements
-
-- Add selectable safe and drifted topology scenarios for demonstrations.
-- Export topology diagrams as PNG or GraphML.
-- Add a scan-history command with date and status filters.
-- Add unit tests, integration tests, and continuous integration checks.
-- Integrate read-only AWS inventory collection behind an optional adapter.
-- Add recommendation confidence scores and a remediation approval workflow.
-- Add structured JSON output for dashboards and external integrations.
-
-## Upload to GitHub
-
-Create an empty repository on GitHub, then run these commands from the project directory:
-
-```bash
-git init
-git add .
-git commit -m "Build AeroDrift cloud topology prototype"
-```
-
-After adding the repository's remote URL in your local Git client, push the branch:
-
-```bash
-git push -u origin main
-```
-
-Do not commit cloud credentials, local environment files, or secrets. This prototype intentionally uses mock data only.
+This project is intended for internship, learning, demonstration, and CloudOps automation study purposes.
